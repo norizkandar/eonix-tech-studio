@@ -1,1 +1,80 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07131f">
+  <meta name="description" content="Smart Tuisyen — Learn Smarter. Achieve More. Created by Eonix Tech Studio.">
+  <title>Smart Tuisyen | Eonix Tech Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toast" class="toast"></div>
 
+  <section id="splash" class="splash">
+    <div class="splash-orb orb-a"></div><div class="splash-orb orb-b"></div>
+    <div class="brand-mark">ST</div>
+    <h1>Smart Tuisyen</h1>
+    <p>Learn Smarter. Achieve More.</p>
+    <small>Created by Eonix Tech Studio</small>
+    <div class="loader"><span></span></div>
+  </section>
+
+  <main id="auth" class="auth hidden">
+    <div class="auth-visual">
+      <div class="brand-mark large">ST</div>
+      <div>
+        <p class="eyebrow">EONIX TECH STUDIO</p>
+        <h1>Smart learning,<br><span>built for tomorrow.</span></h1>
+        <p>Live classes, replays, notes, homework, quizzes, progress and communication — all in one place.</p>
+      </div>
+      <div class="feature-pills"><span>Live Classes</span><span>Smart Progress</span><span>Real-time Chat</span></div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs"><button class="active" data-auth="signin">Sign In</button><button data-auth="signup">Create Account</button></div>
+      <form id="signinForm" class="auth-form">
+        <label>Email or phone<input id="loginId" required placeholder="you@example.com"></label>
+        <label>Password<div class="password-wrap"><input id="loginPassword" type="password" required placeholder="••••••••"><button type="button" class="eye" data-toggle="loginPassword">◉</button></div></label>
+        <div class="form-row"><label class="check"><input type="checkbox" id="remember"> Remember me</label><button type="button" class="link-btn" data-action="forgot">Forgot password?</button></div>
+        <button class="primary-btn" type="submit">Sign In <span>→</span></button>
+        <p class="demo-hint">Demo: use any email + password to enter as Student.</p>
+      </form>
+      <form id="signupForm" class="auth-form hidden">
+        <label>Full Name<input id="signupName" required placeholder="Your full name"></label>
+        <label>Email<input id="signupEmail" type="email" required placeholder="you@example.com"></label>
+        <label>Phone Number<input id="signupPhone" required placeholder="+60..."></label>
+        <div class="two-col">
+          <label>Password<input id="signupPassword" type="password" required minlength="6" placeholder="Minimum 6 characters"></label>
+          <label>Confirm Password<input id="signupConfirm" type="password" required placeholder="Repeat password"></label>
+        </div>
+        <label>User Type<select id="signupRole"><option value="student">Student</option><option value="parent">Parent</option><option value="teacher">Teacher</option></select></label>
+        <button class="primary-btn" type="submit">Create Account <span>→</span></button>
+      </form>
+    </div>
+  </main>
+
+  <div id="app" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="side-brand"><div class="brand-mark small">ST</div><div><b>Smart Tuisyen</b><small>Eonix Tech Studio</small></div></div>
+      <nav id="sideNav"></nav>
+      <div class="side-bottom"><button data-page="settings">⚙ Settings</button><button id="logout">↪ Log out</button></div>
+    </aside>
+
+    <section class="main-area">
+      <header class="topbar">
+        <button id="mobileMenu" class="icon-btn">☰</button>
+        <div class="search"><span>⌕</span><input id="globalSearch" placeholder="Search classes, notes, teachers..."></div>
+        <div class="top-actions"><button class="icon-btn" data-page="notifications">♢<i id="notifDot"></i></button><button class="icon-btn" data-page="chat">◌</button><button class="avatar" id="profileAvatar">N</button></div>
+      </header>
+      <div id="content" class="content"></div>
+    </section>
+    <nav class="mobile-nav" id="mobileNav"></nav>
+  </div>
+
+  <div id="modal" class="modal hidden"><div class="modal-box"><button class="modal-close">×</button><div id="modalContent"></div></div></div>
+  <script src="app.js"></script>
+</body>
+</html>
