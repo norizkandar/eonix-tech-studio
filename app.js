@@ -126,63 +126,20 @@ $("#signinForm").onsubmit = async e => {
     return;
   }
 
-  state.user = {
-    name: data.user.user_metadata?.name || "Student",
-    email: data.user.email,
-    phone: data.user.user_metadata?.phone || "",
-    role: data.user.user_metadata?.role || "student"
-  };
-
-  state.role = state.user.role;
-  save();
-
-  showToast("Welcome back 👋");
-  setTimeout(showApp, 350);
-};
-$("#signupForm").onsubmit = async e => {
-  e.preventDefault();
-
-  const name = $("#signupName").value.trim();
-  const email = $("#signupEmail").value.trim();
-  const phone = $("#signupPhone").value.trim();
-  const password = $("#signupPassword").value;
-  const confirm = $("#signupConfirm").value;
-  const role = $("#signupRole").value;
-
-  if (password !== confirm) {
-    showToast("Passwords do not match");
-    return;
-  }
-
-  const { data, error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        name,
-        phone,
-        role
-      }
-    }
-  });
-
-  if (error) {
-    showToast(error.message);
-    return;
-  }
-
   if (data.user) {
+    const userData = data.user.user_metadata || {};
+
     state.user = {
-      name,
-      email,
-      phone,
-      role
+      name: userData.name || "Student",
+      email: data.user.email,
+      phone: userData.phone || "",
+      role: userData.role || "student"
     };
 
-    state.role = role;
+    state.role = state.user.role;
     save();
 
-    showToast("Account created ✓");
+    showToast("Welcome back 👋");
     setTimeout(showApp, 350);
   }
 };
