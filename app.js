@@ -103,8 +103,82 @@ window.closeModal=closeModal;window.joinClass=joinClass;window.openClass=openCla
 
 $$("[data-auth]").forEach(b=>b.onclick=()=>{$$("[data-auth]").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("#signinForm").classList.toggle("hidden",b.dataset.auth!=="signin");$("#signupForm").classList.toggle("hidden",b.dataset.auth!=="signup")});
 $$("[data-toggle]").forEach(b=>b.onclick=()=>{const i=$("#"+b.dataset.toggle);i.type=i.type==="password"?"text":"password"});
-$("#signinForm").onsubmit=e=>{e.preventDefault();state.user={name:"Norizkandar",email:$("#loginId").value,phone:"",role:"student"};state.role="student";save();showToast("Welcome back 👋");setTimeout(showApp,350)};
-$("#signupForm").onsubmit=e=>{e.preventDefault();if($("#signupPassword").value!==$("#signupConfirm").value)return showToast("Passwords do not match");state.user={name:$("#signupName").value,email:$("#signupEmail").value,phone:$("#signupPhone").value,role:$("#signupRole").value};state.role=state.user.role;save();showToast("Account created ✓");setTimeout(showApp,350)};
+$("#signinForm").onsubmit = async e => {
+  e.preventDefault();
+
+  const email = $("#loginId").value.trim();
+  const password = $("#loginPassword").value;
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  state.user = {
+    name: data.user.user_metadata?.name || "Student",
+    email: data.user.email,
+    phone: data.user.user_metadata?.phone || "",
+    role: data.user.user_metadata?.role || "student"
+  };
+
+  state.role = state.user.role;
+  save();
+
+  showToast("Welcome back 👋");
+  setTimeout(showApp, 350);
+};
+$("#signupForm").onsubmit = async e => {
+  e.preventDefault();
+
+  const name = $("#signupName").value.trim();
+  const email = $("#signupEmail").value.trim();
+  const phone = $("#signupPhone").value.trim();
+  const password = $("#signupPassword").value;
+  const confirm = $("#signupConfirm").value;
+  const role = $("#signupRole").value;
+
+  if (password !== confirm) {
+    showToast("Passwords do not match");
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name,
+        phone,
+        role
+      }
+    }
+  });
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  if (data.user) {
+    state.user = {
+      name,
+      email,
+      phone,
+      role
+    };
+
+    state.role = role;
+    save();
+
+    showToast("Account created ✓");
+    setTimeout(showApp, 350);
+  }
+};
 $("#logout").onclick=()=>{localStorage.removeItem("st_user");localStorage.removeItem("st_role");location.reload()};
 $("#profileAvatar").onclick=()=>navigate("profile");
 $$("[data-page]").forEach(b=>b.onclick=()=>navigate(b.dataset.page));
