@@ -2521,8 +2521,7 @@ $("#signupForm").addEventListener(
       .upsert({
         id: data.user.id,
         full_name,
-        role,
-        email
+        role
       });
 
       if (profileError) {
