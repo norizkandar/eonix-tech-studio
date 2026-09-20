@@ -1135,6 +1135,11 @@ window.openReplay = openReplay;
 ========================================================= */
 
 async function renderHomework() {
+  if (state.role === "teacher") {
+    await renderTeacherHomework();
+    return;
+  }
+
   if (state.role === "parent") {
     renderSimple(
       "Homework",
@@ -1144,25 +1149,707 @@ async function renderHomework() {
     return;
   }
 
-  if (state.role === "teacher") {
-    renderSimple(
-      "Homework Manager",
-      "TEACHER",
-      "Create and manage homework for your classes."
+  await renderStudentHomework();
+}
+
+/* =========================================================
+   STUDENT HOMEWORK
+========================================================= */
+
+async function renderStudentHomework() {
+  $("#content").innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">HOMEWORK</div>
+        <h1>Your Assignments</h1>
+        <p>Complete your homework and submit your answers.</p>
+      </div>
+    </div>
+
+    <div id="homeworkList" class="card-grid">
+      <div class="empty">
+        Loading homework...
+      </div>
+    </div>
+  `;
+
+  const { data, error } = await supabaseClient
+    .from("homework")
+    .select(`
+      id,
+      class_id,
+      title,
+      description,
+      due_at,
+      created_at,
+      classes (
+        id,
+        title,
+        subjects (
+          name
+        )
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  const list = $("#homeworkList");
+
+  if (error) {
+    console.error("Student homework:", error);
+
+    list.innerHTML = `
+      <div class="empty">
+        <h3>Unable to load homework</h3>
+        <p>${escapeHtml(error.message)}</p>
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!data || !data.length) {
+    list.innerHTML = `
+      <div class="empty">
+        <h3>📝 No homework yet</h3>
+        <p>
+          Homework from your enrolled classes will appear here.
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  list.innerHTML = data
+    .map(
+      (hw) => `
+        <article class="class-card">
+
+          <div class="class-thumb">
+            📝
+          </div>
+
+          <div class="class-info">
+
+            <span class="badge">
+              ${escapeHtml(
+                hw.classes?.subjects?.name || "Homework"
+              )}
+            </span>
+
+            <h3>
+              ${escapeHtml(hw.title)}
+            </h3>
+
+            <p>
+              ${escapeHtml(
+                hw.description || "No description provided."
+              )}
+            </p>
+
+            <p>
+              📚 ${escapeHtml(
+                hw.classes?.title || "Class"
+              )}
+            </p>
+
+            ${
+              hw.due_at
+                ? `
+                  <p>
+                    ⏰ Due:
+                    ${new Date(
+                      hw.due_at
+                    ).toLocaleString()}
+                  </p>
+                `
+                : `
+                  <p>⏰ No deadline</p>
+                `
+            }
+
+            <button
+              class="primary-btn"
+              onclick="openHomework('${hw.id}')">
+              View Homework
+            </button>
+
+          </div>
+
+        </article>
+      `
+    )
+    .join("");
+}
+
+/* =========================================================
+   OPEN STUDENT HOMEWORK
+========================================================= */
+
+async function openHomework(homeworkId) {
+  const { data: homework, error } = await supabaseClient
+    .from("homework")
+    .select(`
+      id,
+      class_id,
+      title,
+      description,
+      due_at,
+      created_at,
+      classes (
+        id,
+        title,
+        subjects (
+          name
+        )
+      )
+    `)
+    .eq("id", homeworkId)
+    .maybeSingle();
+
+  if (error || !homework) {
+    console.error(error);
+    showToast("Homework not found.");
+    return;
+  }
+
+  let submission = null;
+
+  if (state.role === "student") {
+    const result = await supabaseClient
+      .from("homework_submissions")
+      .select(`
+        id,
+        answer,
+        status,
+        submitted_at
+      `)
+      .eq("homework_id", homework.id)
+      .eq("student_id", state.user.id)
+      .maybeSingle();
+
+    if (!result.error) {
+      submission = result.data;
+    }
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      HOMEWORK
+    </div>
+
+    <h2>
+      ${escapeHtml(homework.title)}
+    </h2>
+
+    <p>
+      ${escapeHtml(
+        homework.description || "No description provided."
+      )}
+    </p>
+
+    <div class="panel">
+
+      <p>
+        <strong>Class:</strong>
+        ${escapeHtml(
+          homework.classes?.title || "Class"
+        )}
+      </p>
+
+      <p>
+        <strong>Subject:</strong>
+        ${escapeHtml(
+          homework.classes?.subjects?.name || "Subject"
+        )}
+      </p>
+
+      <p>
+        <strong>Due:</strong>
+        ${
+          homework.due_at
+            ? new Date(
+                homework.due_at
+              ).toLocaleString()
+            : "No deadline"
+        }
+      </p>
+
+    </div>
+
+    ${
+      state.role === "student"
+        ? `
+          <form id="homeworkSubmitForm">
+
+            <label>
+              Your Answer
+            </label>
+
+            <textarea
+              id="homeworkAnswer"
+              rows="8"
+              placeholder="Write your answer here..."
+              required
+            >${escapeHtml(
+              submission?.answer || ""
+            )}</textarea>
+
+            <button
+              class="primary-btn"
+              type="submit">
+              ${
+                submission
+                  ? "Update Submission"
+                  : "Submit Homework"
+              }
+            </button>
+
+            ${
+              submission
+                ? `
+                  <p>
+                    ✅ Submitted:
+                    ${new Date(
+                      submission.submitted_at
+                    ).toLocaleString()}
+                  </p>
+                `
+                : ""
+            }
+
+          </form>
+        `
+        : ""
+    }
+  `);
+
+  const form = $("#homeworkSubmitForm");
+
+  if (form) {
+    form.addEventListener("submit", async (event) => {
+      await submitHomework(
+        event,
+        homework.id,
+        submission
+      );
+    });
+  }
+}
+
+window.openHomework = openHomework;
+
+/* =========================================================
+   SUBMIT HOMEWORK
+========================================================= */
+
+async function submitHomework(
+  event,
+  homeworkId,
+  existingSubmission
+) {
+  event.preventDefault();
+
+  if (!state.user || state.role !== "student") {
+    showToast("Student access required.");
+    return;
+  }
+
+  const answer =
+    $("#homeworkAnswer")?.value.trim();
+
+  if (!answer) {
+    showToast("Please write your answer.");
+    return;
+  }
+
+  let result;
+
+  if (existingSubmission) {
+    result = await supabaseClient
+      .from("homework_submissions")
+      .update({
+        answer,
+        status: "submitted",
+        submitted_at: new Date().toISOString()
+      })
+      .eq("id", existingSubmission.id)
+      .eq("student_id", state.user.id);
+  } else {
+    result = await supabaseClient
+      .from("homework_submissions")
+      .insert({
+        homework_id: homeworkId,
+        student_id: state.user.id,
+        answer,
+        status: "submitted"
+      });
+  }
+
+  if (result.error) {
+    console.error(
+      "Homework submission:",
+      result.error
+    );
+
+    showToast(
+      result.error.message ||
+      "Could not submit homework."
+    );
+
+    return;
+  }
+
+  closeModal();
+
+  showToast(
+    existingSubmission
+      ? "Homework updated successfully!"
+      : "Homework submitted successfully!"
+  );
+
+  await renderPage();
+}
+
+/* =========================================================
+   TEACHER HOMEWORK
+========================================================= */
+
+async function renderTeacherHomework() {
+  $("#content").innerHTML = `
+    <div class="page-head">
+
+      <div>
+        <div class="eyebrow">TEACHER</div>
+        <h1>Homework Manager</h1>
+        <p>
+          Create and manage homework for your classes.
+        </p>
+      </div>
+
+      <button
+        class="primary-btn"
+        onclick="openCreateHomeworkModal()">
+        + Create Homework
+      </button>
+
+    </div>
+
+    <div id="teacherHomeworkList" class="card-grid">
+
+      <div class="empty">
+        Loading homework...
+      </div>
+
+    </div>
+  `;
+
+  const { data, error } = await supabaseClient
+    .from("homework")
+    .select(`
+      id,
+      class_id,
+      title,
+      description,
+      due_at,
+      created_at,
+      classes (
+        id,
+        title,
+        subjects (
+          name
+        )
+      )
+    `)
+    .eq("teacher_id", state.user.id)
+    .order("created_at", { ascending: false });
+
+  const list = $("#teacherHomeworkList");
+
+  if (error) {
+    console.error(
+      "Teacher homework:",
+      error
+    );
+
+    list.innerHTML = `
+      <div class="empty">
+        <h3>Unable to load homework</h3>
+        <p>${escapeHtml(error.message)}</p>
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!data || !data.length) {
+    list.innerHTML = `
+      <div class="empty">
+        <h3>📝 No homework yet</h3>
+        <p>
+          Create your first homework assignment.
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  list.innerHTML = data
+    .map(
+      (hw) => `
+        <article class="class-card">
+
+          <div class="class-thumb">
+            📝
+          </div>
+
+          <div class="class-info">
+
+            <span class="badge">
+              ${escapeHtml(
+                hw.classes?.subjects?.name || "Homework"
+              )}
+            </span>
+
+            <h3>
+              ${escapeHtml(hw.title)}
+            </h3>
+
+            <p>
+              ${escapeHtml(
+                hw.classes?.title || "Class"
+              )}
+            </p>
+
+            ${
+              hw.due_at
+                ? `
+                  <p>
+                    ⏰ Due:
+                    ${new Date(
+                      hw.due_at
+                    ).toLocaleString()}
+                  </p>
+                `
+                : `
+                  <p>⏰ No deadline</p>
+                `
+            }
+
+            <button
+              class="primary-btn"
+              onclick="openHomework('${hw.id}')">
+              View Homework
+            </button>
+
+          </div>
+
+        </article>
+      `
+    )
+    .join("");
+}
+
+/* =========================================================
+   CREATE HOMEWORK
+========================================================= */
+
+async function openCreateHomeworkModal() {
+  if (
+    !state.user ||
+    state.role !== "teacher"
+  ) {
+    showToast("Teacher access required.");
+    return;
+  }
+
+  const { data: classes, error } =
+    await supabaseClient
+      .from("classes")
+      .select(`
+        id,
+        title,
+        subjects (
+          name
+        )
+      `)
+      .eq("teacher_id", state.user.id)
+      .order("created_at", {
+        ascending: false
+      });
+
+  if (error) {
+    console.error(error);
+    showToast(
+      "Could not load your classes."
     );
     return;
   }
 
-  renderSimple(
-    "Your Assignments",
-    "HOMEWORK",
-    "Your homework and assignments will appear here."
+  if (!classes || !classes.length) {
+    showToast(
+      "Create a class first."
+    );
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      TEACHER
+    </div>
+
+    <h2>
+      Create Homework
+    </h2>
+
+    <form id="createHomeworkForm">
+
+      <label>
+        Class
+      </label>
+
+      <select
+        id="homeworkClass"
+        required>
+
+        <option value="">
+          Select class
+        </option>
+
+        ${classes
+          .map(
+            (c) => `
+              <option value="${c.id}">
+                ${escapeHtml(c.title)}
+                ${
+                  c.subjects?.name
+                    ? " — " +
+                      escapeHtml(
+                        c.subjects.name
+                      )
+                    : ""
+                }
+              </option>
+            `
+          )
+          .join("")}
+
+      </select>
+
+      <label>
+        Homework Title
+      </label>
+
+      <input
+        id="homeworkTitle"
+        type="text"
+        placeholder="e.g. Mathematics Chapter 3"
+        required
+      >
+
+      <label>
+        Description
+      </label>
+
+      <textarea
+        id="homeworkDescription"
+        rows="5"
+        placeholder="Explain the homework..."
+      ></textarea>
+
+      <label>
+        Due Date
+      </label>
+
+      <input
+        id="homeworkDue"
+        type="datetime-local"
+      >
+
+      <button
+        class="primary-btn"
+        type="submit">
+        Create Homework
+      </button>
+
+    </form>
+  `);
+
+  $("#createHomeworkForm").addEventListener(
+    "submit",
+    createHomework
   );
 }
 
+window.openCreateHomeworkModal =
+  openCreateHomeworkModal;
+
 /* =========================================================
-   NOTES
+   CREATE HOMEWORK ACTION
 ========================================================= */
+
+async function createHomework(event) {
+  event.preventDefault();
+
+  const classId =
+    $("#homeworkClass").value;
+
+  const title =
+    $("#homeworkTitle").value.trim();
+
+  const description =
+    $("#homeworkDescription")
+      .value
+      .trim();
+
+  const dueValue =
+    $("#homeworkDue").value;
+
+  if (!classId || !title) {
+    showToast(
+      "Please complete the required fields."
+    );
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("homework")
+      .insert({
+        class_id: classId,
+        teacher_id: state.user.id,
+        title,
+        description,
+        due_at: dueValue
+          ? new Date(
+              dueValue
+            ).toISOString()
+          : null
+      });
+
+  if (error) {
+    console.error(
+      "Create homework:",
+      error
+    );
+
+    showToast(
+      error.message ||
+      "Could not create homework."
+    );
+
+    return;
+  }
+
+  closeModal();
+
+  showToast(
+    "Homework created successfully!"
+  );
+
+  await renderPage();
+}
 
 function renderNotes() {
   renderSimple(
