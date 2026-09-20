@@ -52,15 +52,49 @@ function showToast(message) {
 }
 
 function openModal(html) {
-  $("#modalContent").innerHTML = html;
-  $("#modal").classList.remove("hidden");
+  const content = $("#modalContent");
+  const modal = $("#modal");
+
+  if (!content || !modal) return;
+
+  content.innerHTML = html;
+  modal.classList.remove("hidden");
 }
 
 function closeModal() {
-  $("#modal").classList.add("hidden");
+  $("#modal")?.classList.add("hidden");
 }
 
 window.closeModal = closeModal;
+
+/* =========================================================
+   ROLE HELPERS
+========================================================= */
+
+const VALID_ROLES = [
+  "student",
+  "teacher",
+  "parent"
+];
+
+function getAuthRole(user = state.user) {
+  const role = user?.user_metadata?.role;
+
+  if (VALID_ROLES.includes(role)) {
+    return role;
+  }
+
+  return null;
+}
+
+function getDisplayName(user = state.user) {
+  return (
+    state.profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "User"
+  );
+}
 
 /* =========================================================
    NAVIGATION
@@ -105,30 +139,37 @@ const NAV = {
 function renderNav() {
   const items = NAV[state.role] || NAV.student;
 
-  $("#sidebarNav").innerHTML = items
-    .map(
-      ([id, icon, label]) => `
-        <button data-page="${id}" class="${
-        state.page === id ? "active" : ""
-      }">
-          ${icon} ${label}
-        </button>
-      `
-    )
-    .join("");
+  const sidebar = $("#sidebarNav");
+  const mobile = $("#mobileNav");
 
-  $("#mobileNav").innerHTML = items
-    .slice(0, 5)
-    .map(
-      ([id, icon, label]) => `
-        <button data-page="${id}" class="${
-        state.page === id ? "active" : ""
-      }">
-          ${icon}<br>${escapeHtml(label)}
-        </button>
-      `
-    )
-    .join("");
+  if (sidebar) {
+    sidebar.innerHTML = items
+      .map(
+        ([id, icon, label]) => `
+          <button
+            data-page="${id}"
+            class="${state.page === id ? "active" : ""}">
+            ${icon} ${escapeHtml(label)}
+          </button>
+        `
+      )
+      .join("");
+  }
+
+  if (mobile) {
+    mobile.innerHTML = items
+      .slice(0, 5)
+      .map(
+        ([id, icon, label]) => `
+          <button
+            data-page="${id}"
+            class="${state.page === id ? "active" : ""}">
+            ${icon}<br>${escapeHtml(label)}
+          </button>
+        `
+      )
+      .join("");
+  }
 }
 
 /* =========================================================
@@ -137,6 +178,10 @@ function renderNav() {
 
 async function loadProfile() {
   if (!state.user) return;
+
+  const metadata = state.user.user_metadata || {};
+
+  const metadataRole = getAuthRole(state.user);
 
   const { data, error } = await supabaseClient
     .from("profiles")
@@ -148,54 +193,96 @@ async function loadProfile() {
     console.warn("Profile error:", error);
   }
 
-  state.profile =
-    data || {
-      id: state.user.id,
-      full_name: state.user.email?.split("@")[0] || "User",
-      role: "student"
-    };
+  const databaseRole =
+    VALID_ROLES.includes(data?.role)
+      ? data.role
+      : null;
 
-  state.role = state.profile.role || "student";
+  const role =
+    databaseRole ||
+    metadataRole ||
+    "student";
+
+  state.profile = {
+    ...(data || {}),
+
+    id: state.user.id,
+
+    full_name:
+      data?.full_name ||
+      metadata.full_name ||
+      state.user.email?.split("@")[0] ||
+      "User",
+
+    role
+  };
+
+  state.role = role;
 }
 
 /* =========================================================
-   AUTH / START
+   SHOW APP
+========================================================= */
+
+async function showApp() {
+  $("#splash")?.classList.add("hidden");
+  $("#authScreen")?.classList.add("hidden");
+  $("#appShell")?.classList.remove("hidden");
+
+  updateAvatar();
+
+  state.page = "home";
+
+  await renderPage();
+}
+
+/* =========================================================
+   START APP
 ========================================================= */
 
 async function startApp() {
-  const { data } = await supabaseClient.auth.getSession();
+  const { data, error } =
+    await supabaseClient.auth.getSession();
 
-  if (data.session) {
+  if (error) {
+    console.error(
+      "Session error:",
+      error
+    );
+  }
+
+  if (data?.session) {
     state.user = data.session.user;
 
     await loadProfile();
 
-    $("#splash").classList.add("hidden");
-    $("#authScreen").classList.add("hidden");
-    $("#appShell").classList.remove("hidden");
+    await showApp();
 
-    updateAvatar();
-
-    renderNav();
-    await renderPage();
-  } else {
-    setTimeout(() => {
-      $("#splash").classList.add("hidden");
-      $("#authScreen").classList.remove("hidden");
-    }, 900);
+    return;
   }
+
+  setTimeout(() => {
+    $("#splash")?.classList.add("hidden");
+    $("#authScreen")?.classList.remove("hidden");
+  }, 900);
 }
 
-function updateAvatar() {
-  const name =
-    state.profile?.full_name ||
-    state.user?.email ||
-    "N";
+/* =========================================================
+   AVATAR
+========================================================= */
 
-  $("#avatar").textContent = name
-    .trim()
-    .charAt(0)
-    .toUpperCase();
+function updateAvatar() {
+  const avatar = $("#avatar");
+
+  if (!avatar) return;
+
+  const name = getDisplayName();
+
+  avatar.textContent =
+    name
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "N";
 }
 
 /* =========================================================
@@ -205,13 +292,91 @@ function updateAvatar() {
 async function loadStudentClasses() {
   if (!state.user) return [];
 
-  const { data, error } = await supabaseClient
-    .from("class_members")
-    .select(`
-      id,
-      class_id,
-      status,
-      classes (
+  const { data, error } =
+    await supabaseClient
+      .from("class_members")
+      .select(`
+        id,
+        class_id,
+        status,
+        classes (
+          id,
+          title,
+          description,
+          price,
+          schedule_text,
+          is_published,
+          teacher_id,
+          subjects (
+            id,
+            name
+          ),
+          profiles:teacher_id (
+            full_name
+          )
+        )
+      `)
+      .eq("student_id", state.user.id)
+      .eq("status", "active");
+
+  if (error) {
+    console.warn(
+      "Student classes:",
+      error
+    );
+
+    return [];
+  }
+
+  return (data || [])
+    .map((item) => item.classes)
+    .filter(Boolean);
+}
+
+async function loadTeacherClasses() {
+  if (!state.user) return [];
+
+  const { data, error } =
+    await supabaseClient
+      .from("classes")
+      .select(`
+        id,
+        title,
+        description,
+        price,
+        schedule_text,
+        is_published,
+        created_at,
+        subjects (
+          id,
+          name
+        )
+      `)
+      .eq("teacher_id", state.user.id)
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+  if (error) {
+    console.warn(
+      "Teacher classes:",
+      error
+    );
+
+    return [];
+  }
+
+  return data || [];
+}
+
+async function loadPublishedClasses() {
+  const { data, error } =
+    await supabaseClient
+      .from("classes")
+      .select(`
         id,
         title,
         description,
@@ -226,74 +391,21 @@ async function loadStudentClasses() {
         profiles:teacher_id (
           full_name
         )
-      )
-    `)
-    .eq("student_id", state.user.id)
-    .eq("status", "active");
+      `)
+      .eq("is_published", true)
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
 
   if (error) {
-    console.warn("Student classes:", error);
-    return [];
-  }
+    console.warn(
+      "Published classes:",
+      error
+    );
 
-  return (data || [])
-    .map((item) => item.classes)
-    .filter(Boolean);
-}
-
-async function loadTeacherClasses() {
-  if (!state.user) return [];
-
-  const { data, error } = await supabaseClient
-    .from("classes")
-    .select(`
-      id,
-      title,
-      description,
-      price,
-      schedule_text,
-      is_published,
-      created_at,
-      subjects (
-        id,
-        name
-      )
-    `)
-    .eq("teacher_id", state.user.id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.warn("Teacher classes:", error);
-    return [];
-  }
-
-  return data || [];
-}
-
-async function loadPublishedClasses() {
-  const { data, error } = await supabaseClient
-    .from("classes")
-    .select(`
-      id,
-      title,
-      description,
-      price,
-      schedule_text,
-      is_published,
-      teacher_id,
-      subjects (
-        id,
-        name
-      ),
-      profiles:teacher_id (
-        full_name
-      )
-    `)
-    .eq("is_published", true)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.warn("Published classes:", error);
     return [];
   }
 
@@ -303,15 +415,30 @@ async function loadPublishedClasses() {
 async function loadNotifications() {
   if (!state.user) return [];
 
-  const { data, error } = await supabaseClient
-    .from("notifications")
-    .select("*")
-    .eq("user_id", state.user.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const { data, error } =
+    await supabaseClient
+      .from("notifications")
+      .select("*")
+      .eq(
+        "user_id",
+        state.user.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      )
+      .limit(20);
 
   if (error) {
-    console.warn("Notifications:", error);
+    console.warn(
+      "Notifications:",
+      error
+    );
+
+    state.notifications = [];
+
     return [];
   }
 
@@ -325,21 +452,40 @@ async function loadNotifications() {
 ========================================================= */
 
 async function renderStudentHome() {
-  const name = state.profile?.full_name || "Student";
+  const name =
+    getDisplayName();
 
-  const classes = await loadStudentClasses();
+  const classes =
+    await loadStudentClasses();
 
   $("#content").innerHTML = `
     <div class="page-head">
+
       <div>
-        <div class="eyebrow">STUDENT DASHBOARD</div>
-        <h1>Keep learning, ${escapeHtml(name)}.</h1>
-        <p>Learn smarter. Go beyond the grade.</p>
+
+        <div class="eyebrow">
+          STUDENT DASHBOARD
+        </div>
+
+        <h1>
+          Keep learning,
+          ${escapeHtml(name)}.
+        </h1>
+
+        <p>
+          Learn smarter. Go beyond the grade.
+        </p>
+
       </div>
 
-      <button class="primary-btn" data-page="classes">
+      <button
+        class="primary-btn"
+        data-page="classes">
+
         Find a Class
+
       </button>
+
     </div>
 
     <div class="stats-grid">
@@ -373,7 +519,10 @@ async function renderStudentHome() {
     <div class="two-col">
 
       <div class="panel">
-        <h2>My Classes</h2>
+
+        <h2>
+          My Classes
+        </h2>
 
         ${
           classes.length
@@ -382,55 +531,117 @@ async function renderStudentHome() {
                 .map(
                   (c) => `
                     <div class="list-item">
-                      <strong>${escapeHtml(c.title)}</strong>
+
+                      <strong>
+                        ${escapeHtml(c.title)}
+                      </strong>
+
                       <br>
+
                       <small>
-                        ${escapeHtml(c.subjects?.name || "Subject")}
+                        ${escapeHtml(
+                          c.subjects?.name ||
+                          "Subject"
+                        )}
+
                         ${
                           c.schedule_text
-                            ? " · " + escapeHtml(c.schedule_text)
+                            ? " · " +
+                              escapeHtml(
+                                c.schedule_text
+                              )
                             : ""
                         }
+
                       </small>
+
                     </div>
                   `
                 )
                 .join("")
             : `
               <div class="empty">
-                <h3>No classes yet</h3>
-                <p>Join your first class to start learning.</p>
+
+                <h3>
+                  No classes yet
+                </h3>
+
+                <p>
+                  Join your first class to start learning.
+                </p>
+
               </div>
             `
         }
+
       </div>
 
       <div class="panel">
-        <h2>Quick Actions</h2>
+
+        <h2>
+          Quick Actions
+        </h2>
 
         <div class="card-grid">
 
-          <button class="feature-card" data-page="classes">
-            <h3>📚 Browse Classes</h3>
-            <p>Explore available tuition classes.</p>
+          <button
+            class="feature-card"
+            data-page="classes">
+
+            <h3>
+              📚 Browse Classes
+            </h3>
+
+            <p>
+              Explore available tuition classes.
+            </p>
+
           </button>
 
-          <button class="feature-card" data-page="replay">
-            <h3>🎥 Watch Replay</h3>
-            <p>Review your previous classes.</p>
+          <button
+            class="feature-card"
+            data-page="replay">
+
+            <h3>
+              🎥 Watch Replay
+            </h3>
+
+            <p>
+              Review your previous classes.
+            </p>
+
           </button>
 
-          <button class="feature-card" data-page="homework">
-            <h3>📝 Homework</h3>
-            <p>Check your assignments.</p>
+          <button
+            class="feature-card"
+            data-page="homework">
+
+            <h3>
+              📝 Homework
+            </h3>
+
+            <p>
+              Check your assignments.
+            </p>
+
           </button>
 
-          <button class="feature-card" data-page="quiz">
-            <h3>❓ Quiz</h3>
-            <p>Practice your knowledge.</p>
+          <button
+            class="feature-card"
+            data-page="quiz">
+
+            <h3>
+              ❓ Quiz
+            </h3>
+
+            <p>
+              Practice your knowledge.
+            </p>
+
           </button>
 
         </div>
+
       </div>
 
     </div>
@@ -442,36 +653,66 @@ async function renderStudentHome() {
 ========================================================= */
 
 async function renderTeacherHome() {
-  const name = state.profile?.full_name || "Teacher";
+  const name =
+    getDisplayName();
 
-  const classes = await loadTeacherClasses();
+  const classes =
+    await loadTeacherClasses();
 
   let studentCount = 0;
 
   for (const cls of classes) {
-    const { count } = await supabaseClient
-      .from("class_members")
-      .select("*", {
-        count: "exact",
-        head: true
-      })
-      .eq("class_id", cls.id)
-      .eq("status", "active");
+
+    const { count } =
+      await supabaseClient
+        .from("class_members")
+        .select(
+          "*",
+          {
+            count: "exact",
+            head: true
+          }
+        )
+        .eq(
+          "class_id",
+          cls.id
+        )
+        .eq(
+          "status",
+          "active"
+        );
 
     studentCount += count || 0;
   }
 
   $("#content").innerHTML = `
     <div class="page-head">
+
       <div>
-        <div class="eyebrow">TEACHER DASHBOARD</div>
-        <h1>Welcome, ${escapeHtml(name)}.</h1>
-        <p>Manage your classes and students.</p>
+
+        <div class="eyebrow">
+          TEACHER DASHBOARD
+        </div>
+
+        <h1>
+          Welcome,
+          ${escapeHtml(name)}.
+        </h1>
+
+        <p>
+          Manage your classes and students.
+        </p>
+
       </div>
 
-      <button class="primary-btn" onclick="openCreateClassModal()">
+      <button
+        class="primary-btn"
+        onclick="openCreateClassModal()">
+
         + Create Class
+
       </button>
+
     </div>
 
     <div class="stats-grid">
@@ -504,12 +745,15 @@ async function renderTeacherHome() {
 
     <div class="panel">
 
-      <h2>My Classes</h2>
+      <h2>
+        My Classes
+      </h2>
 
       ${
         classes.length
           ? `
             <div class="card-grid">
+
               ${classes
                 .map(
                   (c) => `
@@ -522,7 +766,10 @@ async function renderTeacherHome() {
                       <div class="class-info">
 
                         <span class="badge">
-                          ${escapeHtml(c.subjects?.name || "Subject")}
+                          ${escapeHtml(
+                            c.subjects?.name ||
+                            "Subject"
+                          )}
                         </span>
 
                         <h3>
@@ -531,12 +778,17 @@ async function renderTeacherHome() {
 
                         <p>
                           ${escapeHtml(
-                            c.schedule_text || "Schedule not set"
+                            c.schedule_text ||
+                            "Schedule not set"
                           )}
                         </p>
 
                         <p>
-                          ${c.is_published ? "🟢 Published" : "🟡 Draft"}
+                          ${
+                            c.is_published
+                              ? "🟢 Published"
+                              : "🟡 Draft"
+                          }
                         </p>
 
                       </div>
@@ -545,12 +797,20 @@ async function renderTeacherHome() {
                   `
                 )
                 .join("")}
+
             </div>
           `
           : `
             <div class="empty">
-              <h3>No classes yet</h3>
-              <p>Create your first tuition class.</p>
+
+              <h3>
+                No classes yet
+              </h3>
+
+              <p>
+                Create your first tuition class.
+              </p>
+
             </div>
           `
       }
@@ -564,22 +824,27 @@ async function renderTeacherHome() {
 ========================================================= */
 
 async function renderParentHome() {
-  const name = state.profile?.full_name || "Parent";
+  const name =
+    getDisplayName();
 
   let children = [];
 
-  const { data, error } = await supabaseClient
-    .from("parent_children")
-    .select(`
-      id,
-      student_id,
-      profiles:student_id (
+  const { data, error } =
+    await supabaseClient
+      .from("parent_children")
+      .select(`
         id,
-        full_name,
-        role
-      )
-    `)
-    .eq("parent_id", state.user.id);
+        student_id,
+        profiles:student_id (
+          id,
+          full_name,
+          role
+        )
+      `)
+      .eq(
+        "parent_id",
+        state.user.id
+      );
 
   if (!error) {
     children = data || [];
@@ -589,13 +854,28 @@ async function renderParentHome() {
     <div class="page-head">
 
       <div>
-        <div class="eyebrow">PARENT DASHBOARD</div>
-        <h1>Hello, ${escapeHtml(name)}.</h1>
-        <p>Monitor your child's learning journey.</p>
+
+        <div class="eyebrow">
+          PARENT DASHBOARD
+        </div>
+
+        <h1>
+          Hello,
+          ${escapeHtml(name)}.
+        </h1>
+
+        <p>
+          Monitor your child's learning journey.
+        </p>
+
       </div>
 
-      <button class="primary-btn" onclick="openLinkChildModal()">
+      <button
+        class="primary-btn"
+        onclick="openLinkChildModal()">
+
         + Link Child
+
       </button>
 
     </div>
@@ -630,7 +910,9 @@ async function renderParentHome() {
 
     <div class="panel">
 
-      <h2>My Children</h2>
+      <h2>
+        My Children
+      </h2>
 
       ${
         children.length
@@ -640,8 +922,10 @@ async function renderParentHome() {
                   <div class="list-item">
 
                     <strong>
-                      👤 ${escapeHtml(
-                        child.profiles?.full_name || "Student"
+                      👤
+                      ${escapeHtml(
+                        child.profiles?.full_name ||
+                        "Student"
                       )}
                     </strong>
 
@@ -657,11 +941,16 @@ async function renderParentHome() {
               .join("")
           : `
             <div class="empty">
-              <h3>No child linked</h3>
+
+              <h3>
+                No child linked
+              </h3>
+
               <p>
-                Link your child's Student account to monitor
-                their learning.
+                Link your child's Student account
+                to monitor their learning.
               </p>
+
             </div>
           `
       }
@@ -675,17 +964,16 @@ async function renderParentHome() {
 ========================================================= */
 
 async function renderHome() {
+
   if (state.role === "teacher") {
-    await renderTeacherHome();
-    return;
+    return renderTeacherHome();
   }
 
   if (state.role === "parent") {
-    await renderParentHome();
-    return;
+    return renderParentHome();
   }
 
-  await renderStudentHome();
+  return renderStudentHome();
 }
 
 /* =========================================================
@@ -693,15 +981,23 @@ async function renderHome() {
 ========================================================= */
 
 async function renderClasses() {
+
   $("#content").innerHTML = `
     <div class="page-head">
+
       <div>
-        <div class="eyebrow">CLASSES</div>
-        <h1>${
-          state.role === "teacher"
-            ? "My Classes"
-            : "Find your next class."
-        }</h1>
+
+        <div class="eyebrow">
+          CLASSES
+        </div>
+
+        <h1>
+          ${
+            state.role === "teacher"
+              ? "My Classes"
+              : "Find your next class."
+          }
+        </h1>
 
         <p>
           ${
@@ -710,108 +1006,156 @@ async function renderClasses() {
               : "Teacher-led tuition with LIVE learning and replay support."
           }
         </p>
+
       </div>
 
       ${
         state.role === "teacher"
-          ? `<button class="primary-btn" onclick="openCreateClassModal()">+ Create Class</button>`
+          ? `
+            <button
+              class="primary-btn"
+              onclick="openCreateClassModal()">
+
+              + Create Class
+
+            </button>
+          `
           : ""
       }
 
     </div>
 
-    <div id="classesList" class="card-grid">
-      <div class="empty">Loading classes...</div>
+    <div
+      id="classesList"
+      class="card-grid">
+
+      <div class="empty">
+        Loading classes...
+      </div>
+
     </div>
   `;
 
   let classes = [];
 
   if (state.role === "teacher") {
-    classes = await loadTeacherClasses();
-  } else if (state.role === "student") {
-    classes = await loadPublishedClasses();
+    classes =
+      await loadTeacherClasses();
   } else {
-    classes = await loadPublishedClasses();
+    classes =
+      await loadPublishedClasses();
   }
 
-  state.classes = classes;
+  state.classes =
+    classes || [];
 
-  const list = $("#classesList");
+  const list =
+    $("#classesList");
 
-  if (!classes.length) {
+  if (!state.classes.length) {
+
     list.innerHTML = `
       <div class="empty">
-        <h3>No classes available</h3>
-        <p>New classes will appear here.</p>
+
+        <h3>
+          No classes available
+        </h3>
+
+        <p>
+          New classes will appear here.
+        </p>
+
       </div>
     `;
+
     return;
   }
 
-  list.innerHTML = classes
-    .map(
-      (c) => `
-        <article class="class-card">
+  list.innerHTML =
+    state.classes
+      .map(
+        (c) => `
+          <article class="class-card">
 
-          <div class="class-thumb">
-            📚
-          </div>
+            <div class="class-thumb">
+              📚
+            </div>
 
-          <div class="class-info">
+            <div class="class-info">
 
-            <span class="badge">
-              ${escapeHtml(c.subjects?.name || "Subject")}
-            </span>
+              <span class="badge">
+                ${escapeHtml(
+                  c.subjects?.name ||
+                  "Subject"
+                )}
+              </span>
 
-            <h3>
-              ${escapeHtml(c.title)}
-            </h3>
+              <h3>
+                ${escapeHtml(c.title)}
+              </h3>
 
-            <p>
-              ${escapeHtml(
-                c.description || "Teacher-led tuition class."
-              )}
-            </p>
+              <p>
+                ${escapeHtml(
+                  c.description ||
+                  "Teacher-led tuition class."
+                )}
+              </p>
 
-            ${
-              c.profiles?.full_name
-                ? `<p>👨‍🏫 ${escapeHtml(
-                    c.profiles.full_name
-                  )}</p>`
-                : ""
-            }
+              ${
+                c.profiles?.full_name
+                  ? `
+                    <p>
+                      👨‍🏫
+                      ${escapeHtml(
+                        c.profiles.full_name
+                      )}
+                    </p>
+                  `
+                  : ""
+              }
 
-            <p>
-              RM${Number(c.price || 0).toFixed(2)}
-            </p>
+              <p>
+                RM${Number(
+                  c.price || 0
+                ).toFixed(2)}
+              </p>
 
-            ${
-              state.role === "student"
-                ? `
-                  <button
-                    class="primary-btn"
-                    onclick="openClassDetails('${c.id}')">
-                    View Class
-                  </button>
-                `
-                : `
-                  <span class="badge">
-                    ${c.is_published ? "Published" : "Draft"}
-                  </span>
-                `
-            }
+              ${
+                state.role === "student"
+                  ? `
+                    <button
+                      class="primary-btn"
+                      onclick="openClassDetails('${c.id}')">
 
-          </div>
+                      View Class
 
-        </article>
-      `
-    )
-    .join("");
+                    </button>
+                  `
+                  : `
+                    <span class="badge">
+                      ${
+                        c.is_published
+                          ? "Published"
+                          : "Draft"
+                      }
+                    </span>
+                  `
+              }
+
+            </div>
+
+          </article>
+        `
+      )
+      .join("");
 }
 
 async function openClassDetails(id) {
-  const cls = state.classes.find((c) => c.id === id);
+
+  const cls =
+    state.classes.find(
+      (c) => c.id === id
+    );
 
   if (!cls) {
     showToast("Class not found.");
@@ -819,36 +1163,65 @@ async function openClassDetails(id) {
   }
 
   openModal(`
-    <div class="eyebrow">CLASS DETAILS</div>
+    <div class="eyebrow">
+      CLASS DETAILS
+    </div>
 
-    <h2>${escapeHtml(cls.title)}</h2>
+    <h2>
+      ${escapeHtml(cls.title)}
+    </h2>
 
     <p>
       ${escapeHtml(
-        cls.description || "No description available."
+        cls.description ||
+        "No description available."
       )}
     </p>
 
     <div class="panel">
 
       <p>
-        <strong>Subject:</strong>
-        ${escapeHtml(cls.subjects?.name || "—")}
+        <strong>
+          Subject:
+        </strong>
+
+        ${escapeHtml(
+          cls.subjects?.name ||
+          "—"
+        )}
       </p>
 
       <p>
-        <strong>Teacher:</strong>
-        ${escapeHtml(cls.profiles?.full_name || "—")}
+        <strong>
+          Teacher:
+        </strong>
+
+        ${escapeHtml(
+          cls.profiles?.full_name ||
+          "—"
+        )}
       </p>
 
       <p>
-        <strong>Schedule:</strong>
-        ${escapeHtml(cls.schedule_text || "Not set")}
+        <strong>
+          Schedule:
+        </strong>
+
+        ${escapeHtml(
+          cls.schedule_text ||
+          "Not set"
+        )}
       </p>
 
       <p>
-        <strong>Price:</strong>
-        RM${Number(cls.price || 0).toFixed(2)}
+        <strong>
+          Price:
+        </strong>
+
+        RM${Number(
+          cls.price || 0
+        ).toFixed(2)}
+
       </p>
 
     </div>
@@ -859,7 +1232,9 @@ async function openClassDetails(id) {
           <button
             class="primary-btn"
             onclick="joinClass('${cls.id}')">
+
             Join Class
+
           </button>
         `
         : ""
@@ -873,65 +1248,122 @@ async function openClassDetails(id) {
 ========================================================= */
 
 async function joinClass(classId) {
-  if (!state.user || state.role !== "student") {
-    showToast("Only students can join classes.");
+
+  if (
+    !state.user ||
+    state.role !== "student"
+  ) {
+    showToast(
+      "Only students can join classes."
+    );
+
     return;
   }
 
-  const existing = await supabaseClient
-    .from("class_members")
-    .select("id")
-    .eq("class_id", classId)
-    .eq("student_id", state.user.id)
-    .maybeSingle();
+  const existing =
+    await supabaseClient
+      .from("class_members")
+      .select("id")
+      .eq(
+        "class_id",
+        classId
+      )
+      .eq(
+        "student_id",
+        state.user.id
+      )
+      .maybeSingle();
 
   if (existing.data) {
-    showToast("You are already enrolled.");
+
+    showToast(
+      "You are already enrolled."
+    );
+
     closeModal();
+
     return;
   }
 
-  const { error } = await supabaseClient
-    .from("class_members")
-    .insert({
-      class_id: classId,
-      student_id: state.user.id,
-      status: "active"
-    });
+  if (
+    existing.error &&
+    existing.error.code !== "PGRST116"
+  ) {
+    console.error(
+      existing.error
+    );
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("class_members")
+      .insert({
+        class_id: classId,
+        student_id: state.user.id,
+        status: "active"
+      });
 
   if (error) {
+
     console.error(error);
-    showToast("Could not join class.");
+
+    showToast(
+      error.message ||
+      "Could not join class."
+    );
+
     return;
   }
 
   closeModal();
-  showToast("Class joined successfully!");
+
+  showToast(
+    "Class joined successfully!"
+  );
 
   state.page = "home";
+
   await renderPage();
 }
 
-window.joinClass = joinClass;
+window.joinClass =
+  joinClass;
 
 /* =========================================================
    REPLAY
 ========================================================= */
 
 async function renderReplay() {
+
   $("#content").innerHTML = `
     <div class="page-head">
+
       <div>
-        <div class="eyebrow">CLASS REPLAY</div>
-        <h1>Watch your classes again.</h1>
+
+        <div class="eyebrow">
+          CLASS REPLAY
+        </div>
+
+        <h1>
+          Watch your classes again.
+        </h1>
+
         <p>
           Secure recordings from your enrolled classes.
         </p>
+
       </div>
+
     </div>
 
-    <div id="replayList" class="card-grid">
-      <div class="empty">Loading replays...</div>
+    <div
+      id="replayList"
+      class="card-grid">
+
+      <div class="empty">
+        Loading replays...
+      </div>
+
     </div>
   `;
 
@@ -939,115 +1371,163 @@ async function renderReplay() {
 }
 
 async function loadReplays() {
-  const list = $("#replayList");
 
-  if (!list || !state.user) return;
+  const list =
+    $("#replayList");
 
-  const { data, error } = await supabaseClient
-    .from("class_replays")
-    .select(`
-      id,
-      title,
-      subject,
-      teacher_name,
-      recorded_at,
-      duration_seconds,
-      class_id,
-      storage_path
-    `)
-    .order("recorded_at", { ascending: false });
+  if (
+    !list ||
+    !state.user
+  ) {
+    return;
+  }
+
+  const { data, error } =
+    await supabaseClient
+      .from("class_replays")
+      .select(`
+        id,
+        title,
+        subject,
+        teacher_name,
+        recorded_at,
+        duration_seconds,
+        class_id,
+        storage_path
+      `)
+      .order(
+        "recorded_at",
+        {
+          ascending: false
+        }
+      );
 
   if (error) {
+
     console.warn(error);
 
     list.innerHTML = `
       <div class="empty">
-        <h3>🎥 No replay available</h3>
+
+        <h3>
+          🎥 No replay available
+        </h3>
+
         <p>
           Verified class recordings will appear here.
         </p>
+
       </div>
     `;
 
     return;
   }
 
-  state.replayCache = data || [];
+  state.replayCache =
+    data || [];
 
-  if (!state.replayCache.length) {
+  if (
+    !state.replayCache.length
+  ) {
+
     list.innerHTML = `
       <div class="empty">
-        <h3>🎥 No replay yet</h3>
+
+        <h3>
+          🎥 No replay yet
+        </h3>
+
         <p>
-          Your class recordings will appear here after
-          a LIVE session is published.
+          Your class recordings will appear here
+          after a LIVE session is published.
         </p>
+
       </div>
     `;
 
     return;
   }
 
-  list.innerHTML = state.replayCache
-    .map(
-      (r) => `
-        <article class="class-card">
+  list.innerHTML =
+    state.replayCache
+      .map(
+        (r) => `
+          <article class="class-card">
 
-          <div class="class-thumb">
-            ▶
-          </div>
+            <div class="class-thumb">
+              ▶
+            </div>
 
-          <div class="class-info">
+            <div class="class-info">
 
-            <span class="badge">
-              ${escapeHtml(r.subject || "Class")}
-            </span>
+              <span class="badge">
+                ${escapeHtml(
+                  r.subject ||
+                  "Class"
+                )}
+              </span>
 
-            <h3>
-              ${escapeHtml(r.title)}
-            </h3>
+              <h3>
+                ${escapeHtml(
+                  r.title
+                )}
+              </h3>
 
-            <p>
-              👨‍🏫 ${escapeHtml(
-                r.teacher_name || "Teacher"
-              )}
-            </p>
+              <p>
+                👨‍🏫
+                ${escapeHtml(
+                  r.teacher_name ||
+                  "Teacher"
+                )}
+              </p>
 
-            <p>
-              📅 ${new Date(
-                r.recorded_at
-              ).toLocaleDateString()}
-            </p>
+              <p>
+                📅
+                ${new Date(
+                  r.recorded_at
+                ).toLocaleDateString()}
+              </p>
 
-            <button
-              class="primary-btn"
-              onclick="openReplay('${r.id}')">
-              ▶ Watch Replay
-            </button>
+              <button
+                class="primary-btn"
+                onclick="openReplay('${r.id}')">
 
-          </div>
+                ▶ Watch Replay
 
-        </article>
-      `
-    )
-    .join("");
+              </button>
+
+            </div>
+
+          </article>
+        `
+      )
+      .join("");
 }
 
 async function openReplay(id) {
-  const replay = state.replayCache.find(
-    (r) => r.id === id
-  );
+
+  const replay =
+    state.replayCache.find(
+      (r) => r.id === id
+    );
 
   if (!replay) {
-    showToast("Replay not found.");
+    showToast(
+      "Replay not found."
+    );
+
     return;
   }
 
   openModal(`
     <div class="replay-player">
 
-      <div id="replayVideoArea" class="empty">
+      <div
+        id="replayVideoArea"
+        class="empty">
+
         Checking replay access...
+
       </div>
 
     </div>
@@ -1055,16 +1535,23 @@ async function openReplay(id) {
     <div class="replay-meta">
 
       <div class="eyebrow">
-        ${escapeHtml(replay.subject || "CLASS")}
+        ${escapeHtml(
+          replay.subject ||
+          "CLASS"
+        )}
       </div>
 
       <h2>
-        ${escapeHtml(replay.title)}
+        ${escapeHtml(
+          replay.title
+        )}
       </h2>
 
       <p>
-        👨‍🏫 ${escapeHtml(
-          replay.teacher_name || "Teacher"
+        👨‍🏫
+        ${escapeHtml(
+          replay.teacher_name ||
+          "Teacher"
         )}
       </p>
 
@@ -1072,6 +1559,7 @@ async function openReplay(id) {
   `);
 
   try {
+
     const { data, error } =
       await supabaseClient.functions.invoke(
         "create-replay-access",
@@ -1082,9 +1570,16 @@ async function openReplay(id) {
         }
       );
 
-    const area = $("#replayVideoArea");
+    const area =
+      $("#replayVideoArea");
 
-    if (error || !data?.signed_url) {
+    if (!area) return;
+
+    if (
+      error ||
+      !data?.signed_url
+    ) {
+
       area.innerHTML = `
         <div style="padding:35px">
 
@@ -1115,41 +1610,49 @@ async function openReplay(id) {
         style="width:100%;border-radius:18px">
 
         <source
-          src="${escapeHtml(data.signed_url)}"
+          src="${escapeHtml(
+            data.signed_url
+          )}"
           type="video/mp4">
 
         Your browser does not support video playback.
 
       </video>
     `;
+
   } catch (error) {
+
     console.error(error);
-    showToast("Could not open replay.");
+
+    showToast(
+      "Could not open replay."
+    );
   }
 }
 
-window.openReplay = openReplay;
+window.openReplay =
+  openReplay;
 
 /* =========================================================
    HOMEWORK
 ========================================================= */
 
 async function renderHomework() {
+
   if (state.role === "teacher") {
-    await renderTeacherHomework();
-    return;
+    return renderTeacherHomework();
   }
 
   if (state.role === "parent") {
-    renderSimple(
+
+    return renderSimple(
       "Homework",
       "HOMEWORK",
       "Your child's homework will appear here."
     );
-    return;
   }
 
-  await renderStudentHomework();
+  return renderStudentHomework();
 }
 
 /* =========================================================
@@ -1157,179 +1660,265 @@ async function renderHomework() {
 ========================================================= */
 
 async function renderStudentHomework() {
+
   $("#content").innerHTML = `
     <div class="page-head">
+
       <div>
-        <div class="eyebrow">HOMEWORK</div>
-        <h1>Your Assignments</h1>
-        <p>Complete your homework and submit your answers.</p>
+
+        <div class="eyebrow">
+          HOMEWORK
+        </div>
+
+        <h1>
+          Your Assignments
+        </h1>
+
+        <p>
+          Complete your homework and submit your answers.
+        </p>
+
       </div>
+
     </div>
 
-    <div id="homeworkList" class="card-grid">
+    <div
+      id="homeworkList"
+      class="card-grid">
+
       <div class="empty">
         Loading homework...
       </div>
+
     </div>
   `;
 
-  const { data, error } = await supabaseClient
-    .from("homework")
-    .select(`
-      id,
-      class_id,
-      title,
-      description,
-      due_at,
-      created_at,
-      classes (
+  const { data, error } =
+    await supabaseClient
+      .from("homework")
+      .select(`
         id,
+        class_id,
         title,
-        subjects (
-          name
+        description,
+        due_at,
+        created_at,
+        classes (
+          id,
+          title,
+          subjects (
+            name
+          )
         )
-      )
-    `)
-    .order("created_at", { ascending: false });
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
 
-  const list = $("#homeworkList");
+  const list =
+    $("#homeworkList");
 
   if (error) {
-    console.error("Student homework:", error);
+
+    console.error(
+      "Student homework:",
+      error
+    );
 
     list.innerHTML = `
       <div class="empty">
-        <h3>Unable to load homework</h3>
-        <p>${escapeHtml(error.message)}</p>
-      </div>
-    `;
 
-    return;
-  }
+        <h3>
+          Unable to load homework
+        </h3>
 
-  if (!data || !data.length) {
-    list.innerHTML = `
-      <div class="empty">
-        <h3>📝 No homework yet</h3>
         <p>
-          Homework from your enrolled classes will appear here.
+          ${escapeHtml(
+            error.message
+          )}
         </p>
+
       </div>
     `;
 
     return;
   }
 
-  list.innerHTML = data
-    .map(
-      (hw) => `
-        <article class="class-card">
+  if (!data?.length) {
 
-          <div class="class-thumb">
-            📝
-          </div>
+    list.innerHTML = `
+      <div class="empty">
 
-          <div class="class-info">
+        <h3>
+          📝 No homework yet
+        </h3>
 
-            <span class="badge">
-              ${escapeHtml(
-                hw.classes?.subjects?.name || "Homework"
-              )}
-            </span>
+        <p>
+          Homework from your enrolled classes
+          will appear here.
+        </p>
 
-            <h3>
-              ${escapeHtml(hw.title)}
-            </h3>
+      </div>
+    `;
 
-            <p>
-              ${escapeHtml(
-                hw.description || "No description provided."
-              )}
-            </p>
+    return;
+  }
 
-            <p>
-              📚 ${escapeHtml(
-                hw.classes?.title || "Class"
-              )}
-            </p>
+  list.innerHTML =
+    data
+      .map(
+        (hw) => `
+          <article class="class-card">
 
-            ${
-              hw.due_at
-                ? `
-                  <p>
-                    ⏰ Due:
-                    ${new Date(
-                      hw.due_at
-                    ).toLocaleString()}
-                  </p>
-                `
-                : `
-                  <p>⏰ No deadline</p>
-                `
-            }
+            <div class="class-thumb">
+              📝
+            </div>
 
-            <button
-              class="primary-btn"
-              onclick="openHomework('${hw.id}')">
-              View Homework
-            </button>
+            <div class="class-info">
 
-          </div>
+              <span class="badge">
+                ${escapeHtml(
+                  hw.classes?.subjects?.name ||
+                  "Homework"
+                )}
+              </span>
 
-        </article>
-      `
-    )
-    .join("");
+              <h3>
+                ${escapeHtml(
+                  hw.title
+                )}
+              </h3>
+
+              <p>
+                ${escapeHtml(
+                  hw.description ||
+                  "No description provided."
+                )}
+              </p>
+
+              <p>
+                📚
+                ${escapeHtml(
+                  hw.classes?.title ||
+                  "Class"
+                )}
+              </p>
+
+              ${
+                hw.due_at
+                  ? `
+                    <p>
+                      ⏰ Due:
+                      ${new Date(
+                        hw.due_at
+                      ).toLocaleString()}
+                    </p>
+                  `
+                  : `
+                    <p>
+                      ⏰ No deadline
+                    </p>
+                  `
+              }
+
+              <button
+                class="primary-btn"
+                onclick="openHomework('${hw.id}')">
+
+                View Homework
+
+              </button>
+
+            </div>
+
+          </article>
+        `
+      )
+      .join("");
 }
 
 /* =========================================================
-   OPEN STUDENT HOMEWORK
+   OPEN HOMEWORK
 ========================================================= */
 
-async function openHomework(homeworkId) {
-  const { data: homework, error } = await supabaseClient
-    .from("homework")
-    .select(`
-      id,
-      class_id,
-      title,
-      description,
-      due_at,
-      created_at,
-      classes (
-        id,
-        title,
-        subjects (
-          name
-        )
-      )
-    `)
-    .eq("id", homeworkId)
-    .maybeSingle();
+async function openHomework(
+  homeworkId
+) {
 
-  if (error || !homework) {
+  const {
+    data: homework,
+    error
+  } =
+    await supabaseClient
+      .from("homework")
+      .select(`
+        id,
+        class_id,
+        title,
+        description,
+        due_at,
+        created_at,
+        classes (
+          id,
+          title,
+          subjects (
+            name
+          )
+        )
+      `)
+      .eq(
+        "id",
+        homeworkId
+      )
+      .maybeSingle();
+
+  if (
+    error ||
+    !homework
+  ) {
+
     console.error(error);
-    showToast("Homework not found.");
+
+    showToast(
+      "Homework not found."
+    );
+
     return;
   }
 
   let submission = null;
 
-  if (state.role === "student") {
-    const result = await supabaseClient
-      .from("homework_submissions")
-      .select(`
-        id,
-        answer,
-        status,
-        submitted_at
-      `)
-      .eq("homework_id", homework.id)
-      .eq("student_id", state.user.id)
-      .maybeSingle();
+  if (
+    state.role === "student"
+  ) {
+
+    const result =
+      await supabaseClient
+        .from(
+          "homework_submissions"
+        )
+        .select(`
+          id,
+          answer,
+          status,
+          submitted_at
+        `)
+        .eq(
+          "homework_id",
+          homework.id
+        )
+        .eq(
+          "student_id",
+          state.user.id
+        )
+        .maybeSingle();
 
     if (!result.error) {
-      submission = result.data;
+      submission =
+        result.data;
     }
   }
 
@@ -1339,33 +1928,47 @@ async function openHomework(homeworkId) {
     </div>
 
     <h2>
-      ${escapeHtml(homework.title)}
+      ${escapeHtml(
+        homework.title
+      )}
     </h2>
 
     <p>
       ${escapeHtml(
-        homework.description || "No description provided."
+        homework.description ||
+        "No description provided."
       )}
     </p>
 
     <div class="panel">
 
       <p>
-        <strong>Class:</strong>
+        <strong>
+          Class:
+        </strong>
+
         ${escapeHtml(
-          homework.classes?.title || "Class"
+          homework.classes?.title ||
+          "Class"
         )}
       </p>
 
       <p>
-        <strong>Subject:</strong>
+        <strong>
+          Subject:
+        </strong>
+
         ${escapeHtml(
-          homework.classes?.subjects?.name || "Subject"
+          homework.classes?.subjects?.name ||
+          "Subject"
         )}
       </p>
 
       <p>
-        <strong>Due:</strong>
+        <strong>
+          Due:
+        </strong>
+
         ${
           homework.due_at
             ? new Date(
@@ -1373,6 +1976,7 @@ async function openHomework(homeworkId) {
               ).toLocaleString()
             : "No deadline"
         }
+
       </p>
 
     </div>
@@ -1380,7 +1984,8 @@ async function openHomework(homeworkId) {
     ${
       state.role === "student"
         ? `
-          <form id="homeworkSubmitForm">
+          <form
+            id="homeworkSubmitForm">
 
             <label>
               Your Answer
@@ -1392,17 +1997,20 @@ async function openHomework(homeworkId) {
               placeholder="Write your answer here..."
               required
             >${escapeHtml(
-              submission?.answer || ""
+              submission?.answer ||
+              ""
             )}</textarea>
 
             <button
               class="primary-btn"
               type="submit">
+
               ${
                 submission
                   ? "Update Submission"
                   : "Submit Homework"
               }
+
             </button>
 
             ${
@@ -1422,22 +2030,31 @@ async function openHomework(homeworkId) {
         `
         : ""
     }
+
   `);
 
-  const form = $("#homeworkSubmitForm");
+  const form =
+    $("#homeworkSubmitForm");
 
   if (form) {
-    form.addEventListener("submit", async (event) => {
-      await submitHomework(
-        event,
-        homework.id,
-        submission
-      );
-    });
+
+    form.addEventListener(
+      "submit",
+      async (event) => {
+
+        await submitHomework(
+          event,
+          homework.id,
+          submission
+        );
+
+      }
+    );
   }
 }
 
-window.openHomework = openHomework;
+window.openHomework =
+  openHomework;
 
 /* =========================================================
    SUBMIT HOMEWORK
@@ -1448,45 +2065,79 @@ async function submitHomework(
   homeworkId,
   existingSubmission
 ) {
+
   event.preventDefault();
 
-  if (!state.user || state.role !== "student") {
-    showToast("Student access required.");
+  if (
+    !state.user ||
+    state.role !== "student"
+  ) {
+
+    showToast(
+      "Student access required."
+    );
+
     return;
   }
 
   const answer =
-    $("#homeworkAnswer")?.value.trim();
+    $("#homeworkAnswer")
+      ?.value
+      .trim();
 
   if (!answer) {
-    showToast("Please write your answer.");
+
+    showToast(
+      "Please write your answer."
+    );
+
     return;
   }
 
   let result;
 
   if (existingSubmission) {
-    result = await supabaseClient
-      .from("homework_submissions")
-      .update({
-        answer,
-        status: "submitted",
-        submitted_at: new Date().toISOString()
-      })
-      .eq("id", existingSubmission.id)
-      .eq("student_id", state.user.id);
+
+    result =
+      await supabaseClient
+        .from(
+          "homework_submissions"
+        )
+        .update({
+          answer,
+          status: "submitted",
+          submitted_at:
+            new Date().toISOString()
+        })
+        .eq(
+          "id",
+          existingSubmission.id
+        )
+        .eq(
+          "student_id",
+          state.user.id
+        );
+
   } else {
-    result = await supabaseClient
-      .from("homework_submissions")
-      .insert({
-        homework_id: homeworkId,
-        student_id: state.user.id,
-        answer,
-        status: "submitted"
-      });
+
+    result =
+      await supabaseClient
+        .from(
+          "homework_submissions"
+        )
+        .insert({
+          homework_id:
+            homeworkId,
+          student_id:
+            state.user.id,
+          answer,
+          status:
+            "submitted"
+        });
   }
 
   if (result.error) {
+
     console.error(
       "Homework submission:",
       result.error
@@ -1516,26 +2167,39 @@ async function submitHomework(
 ========================================================= */
 
 async function renderTeacherHomework() {
+
   $("#content").innerHTML = `
     <div class="page-head">
 
       <div>
-        <div class="eyebrow">TEACHER</div>
-        <h1>Homework Manager</h1>
+
+        <div class="eyebrow">
+          TEACHER
+        </div>
+
+        <h1>
+          Homework Manager
+        </h1>
+
         <p>
           Create and manage homework for your classes.
         </p>
+
       </div>
 
       <button
         class="primary-btn"
         onclick="openCreateHomeworkModal()">
+
         + Create Homework
+
       </button>
 
     </div>
 
-    <div id="teacherHomeworkList" class="card-grid">
+    <div
+      id="teacherHomeworkList"
+      class="card-grid">
 
       <div class="empty">
         Loading homework...
@@ -1544,29 +2208,40 @@ async function renderTeacherHomework() {
     </div>
   `;
 
-  const { data, error } = await supabaseClient
-    .from("homework")
-    .select(`
-      id,
-      class_id,
-      title,
-      description,
-      due_at,
-      created_at,
-      classes (
+  const { data, error } =
+    await supabaseClient
+      .from("homework")
+      .select(`
         id,
+        class_id,
         title,
-        subjects (
-          name
+        description,
+        due_at,
+        created_at,
+        classes (
+          id,
+          title,
+          subjects (
+            name
+          )
         )
+      `)
+      .eq(
+        "teacher_id",
+        state.user.id
       )
-    `)
-    .eq("teacher_id", state.user.id)
-    .order("created_at", { ascending: false });
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
 
-  const list = $("#teacherHomeworkList");
+  const list =
+    $("#teacherHomeworkList");
 
   if (error) {
+
     console.error(
       "Teacher homework:",
       error
@@ -1574,81 +2249,105 @@ async function renderTeacherHomework() {
 
     list.innerHTML = `
       <div class="empty">
-        <h3>Unable to load homework</h3>
-        <p>${escapeHtml(error.message)}</p>
+
+        <h3>
+          Unable to load homework
+        </h3>
+
+        <p>
+          ${escapeHtml(
+            error.message
+          )}
+        </p>
+
       </div>
     `;
 
     return;
   }
 
-  if (!data || !data.length) {
+  if (!data?.length) {
+
     list.innerHTML = `
       <div class="empty">
-        <h3>📝 No homework yet</h3>
+
+        <h3>
+          📝 No homework yet
+        </h3>
+
         <p>
           Create your first homework assignment.
         </p>
+
       </div>
     `;
 
     return;
   }
 
-  list.innerHTML = data
-    .map(
-      (hw) => `
-        <article class="class-card">
+  list.innerHTML =
+    data
+      .map(
+        (hw) => `
+          <article class="class-card">
 
-          <div class="class-thumb">
-            📝
-          </div>
+            <div class="class-thumb">
+              📝
+            </div>
 
-          <div class="class-info">
+            <div class="class-info">
 
-            <span class="badge">
-              ${escapeHtml(
-                hw.classes?.subjects?.name || "Homework"
-              )}
-            </span>
+              <span class="badge">
+                ${escapeHtml(
+                  hw.classes?.subjects?.name ||
+                  "Homework"
+                )}
+              </span>
 
-            <h3>
-              ${escapeHtml(hw.title)}
-            </h3>
+              <h3>
+                ${escapeHtml(
+                  hw.title
+                )}
+              </h3>
 
-            <p>
-              ${escapeHtml(
-                hw.classes?.title || "Class"
-              )}
-            </p>
+              <p>
+                ${escapeHtml(
+                  hw.classes?.title ||
+                  "Class"
+                )}
+              </p>
 
-            ${
-              hw.due_at
-                ? `
-                  <p>
-                    ⏰ Due:
-                    ${new Date(
-                      hw.due_at
-                    ).toLocaleString()}
-                  </p>
-                `
-                : `
-                  <p>⏰ No deadline</p>
-                `
-            }
+              ${
+                hw.due_at
+                  ? `
+                    <p>
+                      ⏰ Due:
+                      ${new Date(
+                        hw.due_at
+                      ).toLocaleString()}
+                    </p>
+                  `
+                  : `
+                    <p>
+                      ⏰ No deadline
+                    </p>
+                  `
+              }
 
-            <button
-              class="primary-btn"
-              onclick="openHomework('${hw.id}')">
-              View Homework
-            </button>
+              <button
+                class="primary-btn"
+                onclick="openHomework('${hw.id}')">
 
-          </div>
+                View Homework
 
-        </article>
-      `
-    )
-    .join("");
+              </button>
+
+            </div>
+
+          </article>
+        `
+      )
+      .join("");
 }
 
 /* =========================================================
@@ -1656,15 +2355,23 @@ async function renderTeacherHomework() {
 ========================================================= */
 
 async function openCreateHomeworkModal() {
+
   if (
     !state.user ||
     state.role !== "teacher"
   ) {
-    showToast("Teacher access required.");
+
+    showToast(
+      "Teacher access required."
+    );
+
     return;
   }
 
-  const { data: classes, error } =
+  const {
+    data: classes,
+    error
+  } =
     await supabaseClient
       .from("classes")
       .select(`
@@ -1674,23 +2381,34 @@ async function openCreateHomeworkModal() {
           name
         )
       `)
-      .eq("teacher_id", state.user.id)
-      .order("created_at", {
-        ascending: false
-      });
+      .eq(
+        "teacher_id",
+        state.user.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
 
   if (error) {
+
     console.error(error);
+
     showToast(
       "Could not load your classes."
     );
+
     return;
   }
 
-  if (!classes || !classes.length) {
+  if (!classes?.length) {
+
     showToast(
       "Create a class first."
     );
+
     return;
   }
 
@@ -1703,7 +2421,8 @@ async function openCreateHomeworkModal() {
       Create Homework
     </h2>
 
-    <form id="createHomeworkForm">
+    <form
+      id="createHomeworkForm">
 
       <label>
         Class
@@ -1720,8 +2439,13 @@ async function openCreateHomeworkModal() {
         ${classes
           .map(
             (c) => `
-              <option value="${c.id}">
-                ${escapeHtml(c.title)}
+              <option
+                value="${c.id}">
+
+                ${escapeHtml(
+                  c.title
+                )}
+
                 ${
                   c.subjects?.name
                     ? " — " +
@@ -1730,6 +2454,7 @@ async function openCreateHomeworkModal() {
                       )
                     : ""
                 }
+
               </option>
             `
           )
@@ -1770,16 +2495,19 @@ async function openCreateHomeworkModal() {
       <button
         class="primary-btn"
         type="submit">
+
         Create Homework
+
       </button>
 
     </form>
   `);
 
-  $("#createHomeworkForm").addEventListener(
-    "submit",
-    createHomework
-  );
+  $("#createHomeworkForm")
+    ?.addEventListener(
+      "submit",
+      createHomework
+    );
 }
 
 window.openCreateHomeworkModal =
@@ -1789,27 +2517,39 @@ window.openCreateHomeworkModal =
    CREATE HOMEWORK ACTION
 ========================================================= */
 
-async function createHomework(event) {
+async function createHomework(
+  event
+) {
+
   event.preventDefault();
 
   const classId =
-    $("#homeworkClass").value;
+    $("#homeworkClass")
+      ?.value;
 
   const title =
-    $("#homeworkTitle").value.trim();
+    $("#homeworkTitle")
+      ?.value
+      .trim();
 
   const description =
     $("#homeworkDescription")
-      .value
+      ?.value
       .trim();
 
   const dueValue =
-    $("#homeworkDue").value;
+    $("#homeworkDue")
+      ?.value;
 
-  if (!classId || !title) {
+  if (
+    !classId ||
+    !title
+  ) {
+
     showToast(
       "Please complete the required fields."
     );
+
     return;
   }
 
@@ -1817,18 +2557,26 @@ async function createHomework(event) {
     await supabaseClient
       .from("homework")
       .insert({
-        class_id: classId,
-        teacher_id: state.user.id,
+        class_id:
+          classId,
+
+        teacher_id:
+          state.user.id,
+
         title,
+
         description,
-        due_at: dueValue
-          ? new Date(
-              dueValue
-            ).toISOString()
-          : null
+
+        due_at:
+          dueValue
+            ? new Date(
+                dueValue
+              ).toISOString()
+            : null
       });
 
   if (error) {
+
     console.error(
       "Create homework:",
       error
@@ -1851,7 +2599,12 @@ async function createHomework(event) {
   await renderPage();
 }
 
+/* =========================================================
+   NOTES
+========================================================= */
+
 function renderNotes() {
+
   renderSimple(
     "Your Notes",
     "NOTES",
@@ -1864,11 +2617,14 @@ function renderNotes() {
 ========================================================= */
 
 function renderQuiz() {
+
   renderSimple(
     state.role === "teacher"
       ? "Quiz Manager"
       : "Quiz Center",
+
     "QUIZ",
+
     state.role === "teacher"
       ? "Create quizzes for your students."
       : "Practice your knowledge and track your results."
@@ -1880,13 +2636,16 @@ function renderQuiz() {
 ========================================================= */
 
 async function renderProgress() {
-  if (state.role === "parent") {
-    renderSimple(
+
+  if (
+    state.role === "parent"
+  ) {
+
+    return renderSimple(
       "Child Progress",
       "PROGRESS",
       "Your child's learning progress will appear here."
     );
-    return;
   }
 
   renderSimple(
@@ -1901,6 +2660,7 @@ async function renderProgress() {
 ========================================================= */
 
 async function renderChat() {
+
   renderSimple(
     "Messages",
     "MESSAGES",
@@ -1913,15 +2673,28 @@ async function renderChat() {
 ========================================================= */
 
 async function renderNotifications() {
+
   await loadNotifications();
 
   $("#content").innerHTML = `
     <div class="page-head">
+
       <div>
-        <div class="eyebrow">NOTIFICATIONS</div>
-        <h1>Notifications</h1>
-        <p>Important updates from Smart Tuisyen.</p>
+
+        <div class="eyebrow">
+          NOTIFICATIONS
+        </div>
+
+        <h1>
+          Notifications
+        </h1>
+
+        <p>
+          Important updates from Smart Tuisyen.
+        </p>
+
       </div>
+
     </div>
 
     <div class="panel">
@@ -1934,17 +2707,27 @@ async function renderNotifications() {
                   <div class="list-item">
 
                     <strong>
-                      ${escapeHtml(n.title)}
+                      ${escapeHtml(
+                        n.title ||
+                        "Notification"
+                      )}
                     </strong>
 
                     <p>
-                      ${escapeHtml(n.body)}
+                      ${escapeHtml(
+                        n.body ||
+                        ""
+                      )}
                     </p>
 
                     <small>
-                      ${new Date(
+                      ${
                         n.created_at
-                      ).toLocaleString()}
+                          ? new Date(
+                              n.created_at
+                            ).toLocaleString()
+                          : ""
+                      }
                     </small>
 
                   </div>
@@ -1953,8 +2736,15 @@ async function renderNotifications() {
               .join("")
           : `
             <div class="empty">
-              <h3>You're all caught up 🎉</h3>
-              <p>No notifications yet.</p>
+
+              <h3>
+                You're all caught up 🎉
+              </h3>
+
+              <p>
+                No notifications yet.
+              </p>
+
             </div>
           `
       }
@@ -1964,19 +2754,31 @@ async function renderNotifications() {
 }
 
 /* =========================================================
-   PROFILE
+   PROFILE PAGE
 ========================================================= */
 
 function renderProfile() {
-  const p = state.profile || {};
+
+  const p =
+    state.profile || {};
 
   $("#content").innerHTML = `
     <div class="page-head">
 
       <div>
-        <div class="eyebrow">PROFILE</div>
-        <h1>Your Profile</h1>
-        <p>Manage your Smart Tuisyen account.</p>
+
+        <div class="eyebrow">
+          PROFILE
+        </div>
+
+        <h1>
+          Your Profile
+        </h1>
+
+        <p>
+          Manage your Smart Tuisyen account.
+        </p>
+
       </div>
 
     </div>
@@ -1986,25 +2788,44 @@ function renderProfile() {
       <div class="list-item">
 
         <strong>
-          👤 ${escapeHtml(p.full_name || "User")}
+          👤
+          ${escapeHtml(
+            p.full_name ||
+            "User"
+          )}
         </strong>
 
         <p>
-          ${escapeHtml(state.user?.email || "")}
+          ${escapeHtml(
+            state.user?.email ||
+            ""
+          )}
         </p>
 
         <p>
           Role:
+
           <strong>
             ${escapeHtml(
-              String(p.role || state.role).toUpperCase()
+              String(
+                p.role ||
+                state.role
+              ).toUpperCase()
             )}
           </strong>
+
         </p>
 
         ${
           p.phone
-            ? `<p>📱 ${escapeHtml(p.phone)}</p>`
+            ? `
+              <p>
+                📱
+                ${escapeHtml(
+                  p.phone
+                )}
+              </p>
+            `
             : ""
         }
 
@@ -2019,6 +2840,7 @@ function renderProfile() {
 ========================================================= */
 
 function renderSettings() {
+
   renderSimple(
     "Settings",
     "SETTINGS",
@@ -2031,6 +2853,7 @@ function renderSettings() {
 ========================================================= */
 
 function renderEarnings() {
+
   renderSimple(
     "Teacher Earnings",
     "EARNINGS",
@@ -2042,22 +2865,35 @@ function renderEarnings() {
    SIMPLE PAGE
 ========================================================= */
 
-function renderSimple(title, eyebrow, body) {
+function renderSimple(
+  title,
+  eyebrow,
+  body
+) {
+
   $("#content").innerHTML = `
     <div class="page-head">
 
       <div>
+
         <div class="eyebrow">
-          ${escapeHtml(eyebrow)}
+          ${escapeHtml(
+            eyebrow
+          )}
         </div>
 
         <h1>
-          ${escapeHtml(title)}
+          ${escapeHtml(
+            title
+          )}
         </h1>
 
         <p>
-          ${escapeHtml(body)}
+          ${escapeHtml(
+            body
+          )}
         </p>
+
       </div>
 
     </div>
@@ -2065,12 +2901,16 @@ function renderSimple(title, eyebrow, body) {
     <div class="panel">
 
       <div class="empty">
-        <h3>Coming next 🚀</h3>
+
+        <h3>
+          Coming next 🚀
+        </h3>
 
         <p>
           This module is prepared for the Smart Tuisyen
           backend and will be connected to Supabase.
         </p>
+
       </div>
 
     </div>
@@ -2082,22 +2922,53 @@ function renderSimple(title, eyebrow, body) {
 ========================================================= */
 
 async function openCreateClassModal() {
-  if (state.role !== "teacher") {
-    showToast("Teacher access required.");
+
+  if (
+    state.role !== "teacher"
+  ) {
+
+    showToast(
+      "Teacher access required."
+    );
+
     return;
   }
 
-  const { data: subjects } = await supabaseClient
-    .from("subjects")
-    .select("id,name")
-    .order("name");
+  const {
+    data: subjects,
+    error
+  } =
+    await supabaseClient
+      .from("subjects")
+      .select(
+        "id,name"
+      )
+      .order(
+        "name"
+      );
+
+  if (error) {
+
+    console.error(error);
+
+    showToast(
+      "Could not load subjects."
+    );
+
+    return;
+  }
 
   openModal(`
-    <div class="eyebrow">TEACHER</div>
+    <div class="eyebrow">
+      TEACHER
+    </div>
 
-    <h2>Create a Class</h2>
+    <h2>
+      Create a Class
+    </h2>
 
-    <form id="createClassForm">
+    <form
+      id="createClassForm">
 
       <input
         id="newClassTitle"
@@ -2112,7 +2983,8 @@ async function openCreateClassModal() {
         rows="4"
       ></textarea>
 
-      <select id="newClassSubject">
+      <select
+        id="newClassSubject">
 
         <option value="">
           Select subject
@@ -2121,8 +2993,13 @@ async function openCreateClassModal() {
         ${(subjects || [])
           .map(
             (s) => `
-              <option value="${s.id}">
-                ${escapeHtml(s.name)}
+              <option
+                value="${s.id}">
+
+                ${escapeHtml(
+                  s.name
+                )}
+
               </option>
             `
           )
@@ -2146,72 +3023,133 @@ async function openCreateClassModal() {
       >
 
       <label>
+
         <input
           id="newClassPublished"
           type="checkbox"
         >
+
         Publish class
+
       </label>
 
       <button
         class="primary-btn"
         type="submit">
+
         Create Class
+
       </button>
 
     </form>
   `);
 
-  $("#createClassForm").addEventListener(
-    "submit",
-    createClass
-  );
+  $("#createClassForm")
+    ?.addEventListener(
+      "submit",
+      createClass
+    );
 }
 
-window.openCreateClassModal = openCreateClassModal;
+window.openCreateClassModal =
+  openCreateClassModal;
 
-async function createClass(event) {
+/* =========================================================
+   CREATE CLASS ACTION
+========================================================= */
+
+async function createClass(
+  event
+) {
+
   event.preventDefault();
 
-  const title = $("#newClassTitle").value.trim();
+  const title =
+    $("#newClassTitle")
+      ?.value
+      .trim();
+
   const description =
-    $("#newClassDescription").value.trim();
+    $("#newClassDescription")
+      ?.value
+      .trim();
 
   const subjectId =
-    $("#newClassSubject").value || null;
+    $("#newClassSubject")
+      ?.value ||
+    null;
 
   const price =
-    Number($("#newClassPrice").value || 45);
+    Number(
+      $("#newClassPrice")
+        ?.value ||
+      45
+    );
 
   const schedule =
-    $("#newClassSchedule").value.trim();
+    $("#newClassSchedule")
+      ?.value
+      .trim();
 
   const published =
-    $("#newClassPublished").checked;
+    $("#newClassPublished")
+      ?.checked;
 
-  const { error } = await supabaseClient
-    .from("classes")
-    .insert({
-      teacher_id: state.user.id,
-      subject_id: subjectId,
-      title,
-      description,
-      price,
-      schedule_text: schedule,
-      is_published: published
-    });
+  if (!title) {
+
+    showToast(
+      "Please enter a class title."
+    );
+
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("classes")
+      .insert({
+        teacher_id:
+          state.user.id,
+
+        subject_id:
+          subjectId,
+
+        title,
+
+        description,
+
+        price,
+
+        schedule_text:
+          schedule,
+
+        is_published:
+          published
+      });
 
   if (error) {
-    console.error(error);
-    showToast(error.message);
+
+    console.error(
+      "Create class:",
+      error
+    );
+
+    showToast(
+      error.message ||
+      "Could not create class."
+    );
+
     return;
   }
 
   closeModal();
 
-  showToast("Class created successfully!");
+  showToast(
+    "Class created successfully!"
+  );
 
-  state.page = "classes";
+  state.page =
+    "classes";
 
   await renderPage();
 }
@@ -2221,21 +3159,33 @@ async function createClass(event) {
 ========================================================= */
 
 async function openLinkChildModal() {
-  if (state.role !== "parent") {
-    showToast("Parent access required.");
+
+  if (
+    state.role !== "parent"
+  ) {
+
+    showToast(
+      "Parent access required."
+    );
+
     return;
   }
 
   openModal(`
-    <div class="eyebrow">PARENT</div>
+    <div class="eyebrow">
+      PARENT
+    </div>
 
-    <h2>Link Child</h2>
+    <h2>
+      Link Child
+    </h2>
 
     <p>
       Enter the Student account ID.
     </p>
 
-    <form id="linkChildForm">
+    <form
+      id="linkChildForm">
 
       <input
         id="childId"
@@ -2247,63 +3197,113 @@ async function openLinkChildModal() {
       <button
         class="primary-btn"
         type="submit">
+
         Link Child
+
       </button>
 
     </form>
   `);
 
-  $("#linkChildForm").addEventListener(
-    "submit",
-    linkChild
-  );
+  $("#linkChildForm")
+    ?.addEventListener(
+      "submit",
+      linkChild
+    );
 }
 
-window.openLinkChildModal = openLinkChildModal;
+window.openLinkChildModal =
+  openLinkChildModal;
 
-async function linkChild(event) {
+async function linkChild(
+  event
+) {
+
   event.preventDefault();
 
-  const studentId = $("#childId").value.trim();
+  const studentId =
+    $("#childId")
+      ?.value
+      .trim();
 
-  const { data: student, error: studentError } =
+  const {
+    data: student,
+    error: studentError
+  } =
     await supabaseClient
       .from("profiles")
-      .select("id,full_name,role")
-      .eq("id", studentId)
+      .select(
+        "id,full_name,role"
+      )
+      .eq(
+        "id",
+        studentId
+      )
       .maybeSingle();
 
-  if (studentError || !student) {
-    showToast("Student account not found.");
+  if (
+    studentError ||
+    !student
+  ) {
+
+    showToast(
+      "Student account not found."
+    );
+
     return;
   }
 
-  if (student.role !== "student") {
-    showToast("That account is not a Student.");
+  if (
+    student.role !==
+    "student"
+  ) {
+
+    showToast(
+      "That account is not a Student."
+    );
+
     return;
   }
 
-  const { error } = await supabaseClient
-    .from("parent_children")
-    .insert({
-      parent_id: state.user.id,
-      student_id: studentId
-    });
+  const { error } =
+    await supabaseClient
+      .from("parent_children")
+      .insert({
+        parent_id:
+          state.user.id,
+
+        student_id:
+          studentId
+      });
 
   if (error) {
-    if (error.code === "23505") {
-      showToast("This child is already linked.");
-    } else {
-      console.error(error);
-      showToast(error.message);
+
+    if (
+      error.code ===
+      "23505"
+    ) {
+
+      showToast(
+        "This child is already linked."
+      );
+
+      return;
     }
+
+    console.error(error);
+
+    showToast(
+      error.message
+    );
 
     return;
   }
 
   closeModal();
 
-  showToast("Child linked successfully!");
+  showToast(
+    "Child linked successfully!"
+  );
 
   await renderPage();
 }
@@ -2313,9 +3313,11 @@ async function linkChild(event) {
 ========================================================= */
 
 async function renderPage() {
+
   renderNav();
 
   switch (state.page) {
+
     case "home":
       await renderHome();
       break;
@@ -2373,212 +3375,358 @@ async function renderPage() {
    NAVIGATION CLICK
 ========================================================= */
 
-document.addEventListener("click", async (event) => {
-  const button = event.target.closest("[data-page]");
+document.addEventListener(
+  "click",
+  async (event) => {
 
-  if (!button) return;
+    const button =
+      event.target.closest(
+        "[data-page]"
+      );
 
-  state.page = button.dataset.page;
+    if (!button) return;
 
-  await renderPage();
-});
+    state.page =
+      button.dataset.page;
+
+    await renderPage();
+  }
+);
 
 /* =========================================================
    MODAL
 ========================================================= */
 
-$("#closeModal").addEventListener(
-  "click",
-  closeModal
-);
+$("#closeModal")
+  ?.addEventListener(
+    "click",
+    closeModal
+  );
 
-$("#modal").addEventListener("click", (event) => {
-  if (event.target.id === "modal") {
-    closeModal();
-  }
-});
+$("#modal")
+  ?.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        event.target.id ===
+        "modal"
+      ) {
+        closeModal();
+      }
+
+    }
+  );
 
 /* =========================================================
    AUTH TOGGLE
 ========================================================= */
 
-$("#toggleAuth").addEventListener("click", () => {
-  const login = $("#loginForm");
-  const signup = $("#signupForm");
+$("#toggleAuth")
+  ?.addEventListener(
+    "click",
+    () => {
 
-  const isSignup =
-    !signup.classList.contains("hidden");
+      const login =
+        $("#loginForm");
 
-  login.classList.toggle("hidden", !isSignup);
-  signup.classList.toggle("hidden", isSignup);
+      const signup =
+        $("#signupForm");
 
-  $("#authTitle").textContent = isSignup
-    ? "Welcome back"
-    : "Create your account";
+      if (
+        !login ||
+        !signup
+      ) {
+        return;
+      }
 
-  $("#authSubtitle").textContent = isSignup
-    ? "Sign in to continue learning."
-    : "Join Smart Academy.";
+      const isSignup =
+        !signup.classList.contains(
+          "hidden"
+        );
 
-  $("#toggleAuth").textContent = isSignup
-    ? "Create a new account"
-    : "Already have an account? Sign in";
-});
+      login.classList.toggle(
+        "hidden",
+        !isSignup
+      );
+
+      signup.classList.toggle(
+        "hidden",
+        isSignup
+      );
+
+      $("#authTitle").textContent =
+        isSignup
+          ? "Welcome back"
+          : "Create your account";
+
+      $("#authSubtitle").textContent =
+        isSignup
+          ? "Sign in to continue learning."
+          : "Join Smart Academy.";
+
+      $("#toggleAuth").textContent =
+        isSignup
+          ? "Create a new account"
+          : "Already have an account? Sign in";
+    }
+  );
 
 /* =========================================================
    LOGIN
 ========================================================= */
 
-$("#loginForm").addEventListener(
-  "submit",
-  async (event) => {
-    event.preventDefault();
+$("#loginForm")
+  ?.addEventListener(
+    "submit",
+    async (event) => {
 
-    $("#authMessage").textContent =
-      "Signing in...";
+      event.preventDefault();
 
-    const email =
-      $("#loginEmail").value.trim();
-
-    const password =
-      $("#loginPassword").value;
-
-    const { data, error } =
-      await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
-
-    if (error) {
       $("#authMessage").textContent =
-        error.message;
-      return;
+        "Signing in...";
+
+      const email =
+        $("#loginEmail")
+          ?.value
+          .trim();
+
+      const password =
+        $("#loginPassword")
+          ?.value;
+
+      if (
+        !email ||
+        !password
+      ) {
+
+        $("#authMessage").textContent =
+          "Please enter your email and password.";
+
+        return;
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient.auth
+          .signInWithPassword({
+            email,
+            password
+          });
+
+      if (error) {
+
+        $("#authMessage").textContent =
+          error.message;
+
+        return;
+      }
+
+      state.user =
+        data.user;
+
+      await loadProfile();
+
+      await showApp();
+
+      $("#authMessage").textContent =
+        "";
     }
-
-    state.user = data.user;
-
-    await loadProfile();
-
-    $("#authScreen").classList.add("hidden");
-    $("#appShell").classList.remove("hidden");
-
-    updateAvatar();
-
-    state.page = "home";
-
-    await renderPage();
-
-    $("#authMessage").textContent = "";
-  }
-);
+  );
 
 /* =========================================================
    SIGNUP
 ========================================================= */
 
-$("#signupForm").addEventListener(
-  "submit",
-  async (event) => {
-    event.preventDefault();
+$("#signupForm")
+  ?.addEventListener(
+    "submit",
+    async (event) => {
 
-    $("#authMessage").textContent =
-      "Creating account...";
+      event.preventDefault();
 
-    const full_name =
-      $("#signupName").value.trim();
-
-    const email =
-      $("#signupEmail").value.trim();
-
-    const password =
-      $("#signupPassword").value;
-
-    const role =
-      $("#signupRole").value;
-
-    const { data, error } =
-      await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name,
-            role
-          }
-        }
-      });
-
-    if (error) {
       $("#authMessage").textContent =
-        error.message;
-      return;
-    }
+        "Creating account...";
 
-    if (data.user) {
-  const { error: profileError } =
-    await supabaseClient
-      .from("profiles")
-      .upsert({
-        id: data.user.id,
-        full_name,
-        role
-      });
+      const full_name =
+        $("#signupName")
+          ?.value
+          .trim();
 
-      if (profileError) {
-        console.warn(
-          "Profile creation:",
-          profileError
-        );
+      const email =
+        $("#signupEmail")
+          ?.value
+          .trim();
+
+      const password =
+        $("#signupPassword")
+          ?.value;
+
+      const role =
+        $("#signupRole")
+          ?.value;
+
+      if (
+        !full_name ||
+        !email ||
+        !password ||
+        !VALID_ROLES.includes(
+          role
+        )
+      ) {
+
+        $("#authMessage").textContent =
+          "Please complete all required fields.";
+
+        return;
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient.auth
+          .signUp({
+            email,
+            password,
+
+            options: {
+              data: {
+                full_name,
+                role
+              }
+            }
+          });
+
+      if (error) {
+
+        $("#authMessage").textContent =
+          error.message;
+
+        return;
+      }
+
+      /* -----------------------------------------------------
+         CREATE PROFILE
+
+         IMPORTANT:
+         Do NOT add email here unless your profiles table
+         actually has an email column.
+      ----------------------------------------------------- */
+
+      if (data.user) {
+
+        const {
+          error: profileError
+        } =
+          await supabaseClient
+            .from("profiles")
+            .upsert({
+              id:
+                data.user.id,
+
+              full_name,
+
+              role
+            });
+
+        if (profileError) {
+
+          console.error(
+            "PROFILE CREATION ERROR:",
+            profileError
+          );
+
+          /*
+             Account itself was created successfully.
+             The role is also stored in auth metadata,
+             so login can still detect Student/Teacher/Parent.
+          */
+
+          $("#authMessage").textContent =
+            "Account created. Profile database setup needs attention: " +
+            profileError.message;
+
+          $("#signupForm").reset();
+
+          return;
+        }
+      }
+
+      $("#authMessage").textContent =
+        data.session
+          ? "Account created successfully. Opening your dashboard..."
+          : "Account created. You can now sign in.";
+
+      $("#signupForm").reset();
+
+      /*
+         If Supabase gives us a session immediately,
+         open the app automatically.
+      */
+
+      if (data.session) {
+
+        state.user =
+          data.user;
+
+        await loadProfile();
+
+        await showApp();
       }
     }
-
-    $("#authMessage").textContent =
-      "Account created. Check your email if verification is required, then sign in.";
-
-    $("#signupForm").reset();
-  }
-);
+  );
 
 /* =========================================================
    LOGOUT
 ========================================================= */
 
-$("#logout").addEventListener(
-  "click",
-  async () => {
-    await supabaseClient.auth.signOut();
+$("#logout")
+  ?.addEventListener(
+    "click",
+    async () => {
 
-    state.user = null;
-    state.profile = null;
-    state.role = "student";
+      await supabaseClient
+        .auth
+        .signOut();
 
-    location.reload();
-  }
-);
+      state.user = null;
+      state.profile = null;
+      state.role = "student";
+      state.page = "home";
+
+      location.reload();
+    }
+  );
 
 /* =========================================================
    AUTH STATE
 ========================================================= */
 
-supabaseClient.auth.onAuthStateChange(
-  async (_event, session) => {
-    if (session && !state.user) {
-      state.user = session.user;
+supabaseClient.auth
+  .onAuthStateChange(
+    async (
+      _event,
+      session
+    ) => {
 
-      await loadProfile();
+      if (
+        session &&
+        !state.user
+      ) {
 
-      $("#splash").classList.add("hidden");
-      $("#authScreen").classList.add("hidden");
-      $("#appShell").classList.remove("hidden");
+        state.user =
+          session.user;
 
-      updateAvatar();
+        await loadProfile();
 
-      state.page = "home";
+        await showApp();
+      }
 
-      await renderPage();
     }
-  }
-);
+  );
 
 /* =========================================================
    START
