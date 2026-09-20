@@ -1,85 +1,58 @@
-# SMART ACADEMY
+# Smart Academy V2
 
-Premium education ecosystem — Beyond The Grade.
+Smart Academy — Beyond The Grade.
 
-## Files
+## Included
 
-- `index.html` — application shell
-- `styles.css` — responsive futuristic UI
-- `app.js` — frontend routing, Supabase Auth and integration placeholders
-- `supabase.sql` — database foundation + RLS
-- `README.md` — setup notes
-
-## Supabase
-
-The frontend uses the Supabase publishable key only.
-
-Do NOT put:
-- service_role key
-- payment secret
-- webhook secret
-- private API credentials
-
-in `index.html`, `styles.css`, or `app.js`.
-
-## Current frontend flows
-
-- Splash
-- 5-step onboarding
-- Email sign up / sign in
-- Forgot password
+- Supabase authentication
 - Student / Teacher / Parent roles
-- Admin UI route (admin must be provisioned securely)
-- Student class marketplace
-- RM45/month default class price
-- Smart Wallet UI
-- Payment history UI
-- Teacher earnings UI
-- LIVE classroom UI
-- Notes / Quiz / Assignment / Progress / Ranking / Achievements
-- Parent monitoring
-- Responsive mobile/tablet/desktop navigation
-- About / Settings / privacy/account controls
+- Class marketplace UI
+- Class Replay page
+- Secure replay access architecture
+- Private Supabase Storage bucket
+- Enrollment-based replay access
+- Wallet + verified payment architecture
+- Payment webhook placeholder
+- Responsive mobile/tablet UI
+- Futuristic blue / emerald / dark navy design
 
-## Production integrations still required
+## Important
 
-The UI intentionally does NOT fake payment success.
+This package does NOT fake payment success or fake video recordings.
 
-Connect these through trusted backend/integration layers:
+For real production use, configure:
+1. Supabase project.
+2. SQL migration.
+3. Supabase Edge Functions.
+4. Private class-replays storage.
+5. TNG/FPX payment provider and webhook.
+6. Video recording provider / LIVE infrastructure.
 
-1. TNG / FPX payment provider
-2. Backend webhook verification
-3. Wallet ledger transaction service
-4. Subscription service
-5. Supabase Storage
-6. Supabase Realtime
-7. Push notification provider
-8. WebRTC/video provider for LIVE, calls and screen sharing
-9. Recording/video storage pipeline
-10. Email provider
-11. Admin moderation and withdrawal functions
+The frontend only contains a Supabase publishable key. Never put a Supabase service-role key, payment secret, webhook secret, or other server secret in GitHub Pages frontend code.
 
-## Payment rule
+## GitHub Pages
 
-Correct flow:
+Upload:
+- index.html
+- styles.css
+- app.js
 
-Create payment
--> payment gateway
--> user completes payment
--> gateway webhook
--> backend verifies webhook
--> wallet/subscription changes
--> transaction record
--> notification
+to your repository root.
 
-Never trust a browser button as proof of payment.
+Then run `supabase/migrations/001_smart_academy_v2.sql` in Supabase SQL Editor.
 
-## Deploy on GitHub Pages
+## Replay
 
-Upload `index.html`, `styles.css`, `app.js` and `supabase.sql`.
+Teacher publishes a row in `class_replays` with:
+- class_id
+- title
+- subject
+- teacher_name
+- storage_path
+- published = true
 
-GitHub Pages can host the frontend. Supabase remains the backend.
+The frontend calls the `create-replay-access` Edge Function. The function verifies authentication and enrollment and returns a short-lived signed URL from the private storage bucket.
 
-Run `supabase.sql` from Supabase Dashboard -> SQL Editor.
+## Payment
 
-Before production, configure the real payment, realtime/video and notification providers through secure backend functions.
+The frontend never changes wallet balance after a button click. Payment status must be verified by the payment provider webhook on the backend.
