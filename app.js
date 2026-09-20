@@ -2515,14 +2515,15 @@ $("#signupForm").addEventListener(
     }
 
     if (data.user) {
-      const { error: profileError } =
-        await supabaseClient
-          .from("profiles")
-          .upsert({
-            id: data.user.id,
-            full_name,
-            role
-          });
+  const { error: profileError } =
+    await supabaseClient
+      .from("profiles")
+      .upsert({
+        id: data.user.id,
+        full_name,
+        role,
+        email
+      });
 
       if (profileError) {
         console.warn(
