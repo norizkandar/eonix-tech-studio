@@ -68,6 +68,28 @@ function closeModal() {
 window.closeModal = closeModal;
 
 /* =========================================================
+   CLASS CODE GENERATOR
+========================================================= */
+
+function generateClassCode() {
+  const characters =
+    "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+  let code = "";
+
+  for (let i = 0; i < 6; i++) {
+    code +=
+      characters[
+        Math.floor(
+          Math.random() * characters.length
+        )
+      ];
+  }
+
+  return `ST-${code}`;
+}
+
+/* =========================================================
    ROLE HELPERS
 ========================================================= */
 
@@ -306,6 +328,7 @@ async function loadStudentClasses() {
           price,
           schedule_text,
           is_published,
+          class_code,
           teacher_id,
           subjects (
             id,
@@ -346,6 +369,7 @@ async function loadTeacherClasses() {
         price,
         schedule_text,
         is_published,
+        class_code,
         created_at,
         subjects (
           id,
@@ -383,7 +407,9 @@ async function loadPublishedClasses() {
         price,
         schedule_text,
         is_published,
+        class_code,
         teacher_id,
+        created_at,
         subjects (
           id,
           name
@@ -783,6 +809,27 @@ async function renderTeacherHome() {
                           )}
                         </p>
 
+                        <div style="
+                          margin:12px 0;
+                          padding:10px 12px;
+                          border-radius:12px;
+                          background:rgba(0,200,255,.08);
+                        ">
+
+                          🔑
+                          <strong>
+                            Class Code:
+                          </strong>
+
+                          <strong>
+                            ${escapeHtml(
+                              c.class_code ||
+                              "Not generated"
+                            )}
+                          </strong>
+
+                        </div>
+
                         <p>
                           ${
                             c.is_published
@@ -1009,19 +1056,41 @@ async function renderClasses() {
 
       </div>
 
-      ${
-        state.role === "teacher"
-          ? `
-            <button
-              class="primary-btn"
-              onclick="openCreateClassModal()">
+      <div style="
+        display:flex;
+        gap:10px;
+        flex-wrap:wrap;
+      ">
 
-              + Create Class
+        ${
+          state.role === "student"
+            ? `
+              <button
+                class="primary-btn"
+                onclick="openJoinClassCodeModal()">
 
-            </button>
-          `
-          : ""
-      }
+                🔑 Join with Class Code
+
+              </button>
+            `
+            : ""
+        }
+
+        ${
+          state.role === "teacher"
+            ? `
+              <button
+                class="primary-btn"
+                onclick="openCreateClassModal()">
+
+                + Create Class
+
+              </button>
+            `
+            : ""
+        }
+
+      </div>
 
     </div>
 
@@ -1114,6 +1183,21 @@ async function renderClasses() {
                   : ""
               }
 
+              ${
+                c.class_code
+                  ? `
+                    <p>
+                      🔑
+                      <strong>
+                        ${escapeHtml(
+                          c.class_code
+                        )}
+                      </strong>
+                    </p>
+                  `
+                  : ""
+              }
+
               <p>
                 RM${Number(
                   c.price || 0
@@ -1149,6 +1233,10 @@ async function renderClasses() {
       )
       .join("");
 }
+
+/* =========================================================
+   CLASS DETAILS
+========================================================= */
 
 async function openClassDetails(id) {
 
@@ -1204,6 +1292,19 @@ async function openClassDetails(id) {
 
       <p>
         <strong>
+          Class Code:
+        </strong>
+
+        <strong>
+          ${escapeHtml(
+            cls.class_code ||
+            "Not available"
+          )}
+        </strong>
+      </p>
+
+      <p>
+        <strong>
           Schedule:
         </strong>
 
@@ -1243,8 +1344,11 @@ async function openClassDetails(id) {
   `);
 }
 
+window.openClassDetails =
+  openClassDetails;
+
 /* =========================================================
-   JOIN CLASS
+   JOIN CLASS BY DATABASE ID
 ========================================================= */
 
 async function joinClass(classId) {
@@ -1328,6 +1432,243 @@ async function joinClass(classId) {
 
 window.joinClass =
   joinClass;
+
+/* =========================================================
+   JOIN CLASS BY CODE MODAL
+========================================================= */
+
+function openJoinClassCodeModal() {
+
+  if (
+    !state.user ||
+    state.role !== "student"
+  ) {
+
+    showToast(
+      "Only students can join classes."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      STUDENT
+    </div>
+
+    <h2>
+      Join a Class
+    </h2>
+
+    <p>
+      Enter the class code given by your teacher.
+    </p>
+
+    <form
+      id="joinClassCodeForm">
+
+      <input
+        id="joinClassCode"
+        type="text"
+        placeholder="Example: ST-K7P2Q9"
+        maxlength="9"
+        autocomplete="off"
+        required
+      >
+
+      <button
+        class="primary-btn"
+        type="submit">
+
+        Join Class
+
+      </button>
+
+    </form>
+  `);
+
+  $("#joinClassCode")
+    ?.focus();
+
+  $("#joinClassCodeForm")
+    ?.addEventListener(
+      "submit",
+      joinClassByCode
+    );
+}
+
+window.openJoinClassCodeModal =
+  openJoinClassCodeModal;
+
+/* =========================================================
+   JOIN CLASS BY CODE ACTION
+========================================================= */
+
+async function joinClassByCode(event) {
+
+  event.preventDefault();
+
+  if (
+    !state.user ||
+    state.role !== "student"
+  ) {
+
+    showToast(
+      "Only students can join classes."
+    );
+
+    return;
+  }
+
+  let classCode =
+    $("#joinClassCode")
+      ?.value
+      .trim()
+      .toUpperCase();
+
+  if (!classCode) {
+
+    showToast(
+      "Please enter a class code."
+    );
+
+    return;
+  }
+
+  const { data: cls, error } =
+    await supabaseClient
+      .from("classes")
+      .select(`
+        id,
+        title,
+        class_code,
+        is_published
+      `)
+      .eq(
+        "class_code",
+        classCode
+      )
+      .maybeSingle();
+
+  if (error) {
+
+    console.error(
+      "Find class by code:",
+      error
+    );
+
+    showToast(
+      error.message ||
+      "Could not find class."
+    );
+
+    return;
+  }
+
+  if (!cls) {
+
+    showToast(
+      "Invalid class code."
+    );
+
+    return;
+  }
+
+  if (!cls.is_published) {
+
+    showToast(
+      "This class is not published yet."
+    );
+
+    return;
+  }
+
+  const existing =
+    await supabaseClient
+      .from("class_members")
+      .select("id")
+      .eq(
+        "class_id",
+        cls.id
+      )
+      .eq(
+        "student_id",
+        state.user.id
+      )
+      .maybeSingle();
+
+  if (existing.data) {
+
+    showToast(
+      "You are already enrolled in this class."
+    );
+
+    closeModal();
+
+    return;
+  }
+
+  if (
+    existing.error &&
+    existing.error.code !== "PGRST116"
+  ) {
+
+    console.error(
+      "Existing membership:",
+      existing.error
+    );
+
+    showToast(
+      existing.error.message ||
+      "Could not check enrollment."
+    );
+
+    return;
+  }
+
+  const { error: joinError } =
+    await supabaseClient
+      .from("class_members")
+      .insert({
+        class_id:
+          cls.id,
+
+        student_id:
+          state.user.id,
+
+        status:
+          "active"
+      });
+
+  if (joinError) {
+
+    console.error(
+      "Join class:",
+      joinError
+    );
+
+    showToast(
+      joinError.message ||
+      "Could not join class."
+    );
+
+    return;
+  }
+
+  closeModal();
+
+  showToast(
+    `Joined ${cls.title} successfully!`
+  );
+
+  state.page =
+    "home";
+
+  await renderPage();
+}
+
+window.joinClassByCode =
+  joinClassByCode;
 
 /* =========================================================
    REPLAY
@@ -2918,7 +3259,7 @@ function renderSimple(
 }
 
 /* =========================================================
-   CREATE CLASS
+   CREATE CLASS MODAL
 ========================================================= */
 
 async function openCreateClassModal() {
@@ -3104,10 +3445,69 @@ async function createClass(
     return;
   }
 
+  /*
+   * Generate a unique-looking human-friendly
+   * class code.
+   *
+   * Example:
+   * ST-K7P2Q9
+   */
+
+  let classCode =
+    generateClassCode();
+
+  /*
+   * Check whether the generated code already exists.
+   * If it exists, generate another one.
+   */
+
+  let codeCheck =
+    await supabaseClient
+      .from("classes")
+      .select("id")
+      .eq(
+        "class_code",
+        classCode
+      )
+      .maybeSingle();
+
+  let attempts = 0;
+
+  while (
+    codeCheck.data &&
+    attempts < 5
+  ) {
+
+    classCode =
+      generateClassCode();
+
+    codeCheck =
+      await supabaseClient
+        .from("classes")
+        .select("id")
+        .eq(
+          "class_code",
+          classCode
+        )
+        .maybeSingle();
+
+    attempts++;
+  }
+
+  if (codeCheck.error) {
+
+    console.warn(
+      "Class code check:",
+      codeCheck.error
+    );
+
+  }
+
   const { error } =
     await supabaseClient
       .from("classes")
       .insert({
+
         teacher_id:
           state.user.id,
 
@@ -3124,7 +3524,10 @@ async function createClass(
           schedule,
 
         is_published:
-          published
+          published,
+
+        class_code:
+          classCode
       });
 
   if (error) {
@@ -3145,7 +3548,7 @@ async function createClass(
   closeModal();
 
   showToast(
-    "Class created successfully!"
+    `Class created! Code: ${classCode}`
   );
 
   state.page =
@@ -3463,7 +3866,7 @@ $("#toggleAuth")
       $("#authSubtitle").textContent =
         isSignup
           ? "Sign in to continue learning."
-          : "Join Smart Academy.";
+          : "Join Smart Tuisyen.";
 
       $("#toggleAuth").textContent =
         isSignup
@@ -3608,13 +4011,12 @@ $("#signupForm")
         return;
       }
 
-      /* -----------------------------------------------------
-         CREATE PROFILE
-
-         IMPORTANT:
-         Do NOT add email here unless your profiles table
-         actually has an email column.
-      ----------------------------------------------------- */
+      /*
+       * CREATE PROFILE
+       *
+       * Do NOT add email here unless
+       * profiles table has an email column.
+       */
 
       if (data.user) {
 
@@ -3639,12 +4041,6 @@ $("#signupForm")
             profileError
           );
 
-          /*
-             Account itself was created successfully.
-             The role is also stored in auth metadata,
-             so login can still detect Student/Teacher/Parent.
-          */
-
           $("#authMessage").textContent =
             "Account created. Profile database setup needs attention: " +
             profileError.message;
@@ -3661,11 +4057,6 @@ $("#signupForm")
           : "Account created. You can now sign in.";
 
       $("#signupForm").reset();
-
-      /*
-         If Supabase gives us a session immediately,
-         open the app automatically.
-      */
 
       if (data.session) {
 
