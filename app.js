@@ -39,6 +39,7 @@ function escapeHtml(value = "") {
 
 function showToast(message) {
   const el = $("#toast");
+
   if (!el) return;
 
   el.textContent = message;
@@ -205,14 +206,18 @@ async function loadProfile() {
 
   const metadataRole = getAuthRole(state.user);
 
-  const { data, error } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", state.user.id)
-    .maybeSingle();
+  const { data, error } =
+    await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", state.user.id)
+      .maybeSingle();
 
   if (error) {
-    console.warn("Profile error:", error);
+    console.warn(
+      "Profile error:",
+      error
+    );
   }
 
   const databaseRole =
@@ -339,8 +344,14 @@ async function loadStudentClasses() {
           )
         )
       `)
-      .eq("student_id", state.user.id)
-      .eq("status", "active");
+      .eq(
+        "student_id",
+        state.user.id
+      )
+      .eq(
+        "status",
+        "active"
+      );
 
   if (error) {
     console.warn(
@@ -376,7 +387,10 @@ async function loadTeacherClasses() {
           name
         )
       `)
-      .eq("teacher_id", state.user.id)
+      .eq(
+        "teacher_id",
+        state.user.id
+      )
       .order(
         "created_at",
         {
@@ -418,7 +432,10 @@ async function loadPublishedClasses() {
           full_name
         )
       `)
-      .eq("is_published", true)
+      .eq(
+        "is_published",
+        true
+      )
       .order(
         "created_at",
         {
@@ -838,6 +855,14 @@ async function renderTeacherHome() {
                           }
                         </p>
 
+                        <button
+                          class="primary-btn"
+                          onclick="openCreateLessonModal('${c.id}')">
+
+                          + Add Lesson
+
+                        </button>
+
                       </div>
 
                     </article>
@@ -1216,6 +1241,14 @@ async function renderClasses() {
                     </button>
                   `
                   : `
+                    <button
+                      class="primary-btn"
+                      onclick="openCreateLessonModal('${c.id}')">
+
+                      + Add Lesson
+
+                    </button>
+
                     <span class="badge">
                       ${
                         c.is_published
@@ -1235,6 +1268,290 @@ async function renderClasses() {
 }
 
 /* =========================================================
+   LESSONS
+========================================================= */
+
+async function loadClassLessons(classId) {
+
+  const { data, error } =
+    await supabaseClient
+      .from("lessons")
+      .select(`
+        id,
+        class_id,
+        teacher_id,
+        title,
+        description,
+        video_url,
+        lesson_type,
+        created_at
+      `)
+      .eq(
+        "class_id",
+        classId
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true
+        }
+      );
+
+  if (error) {
+
+    console.error(
+      "Load lessons:",
+      error
+    );
+
+    return [];
+  }
+
+  return data || [];
+}
+
+/* =========================================================
+   SHOW CLASS LESSONS
+========================================================= */
+
+async function openLessons(classId) {
+
+  const cls =
+    state.classes.find(
+      (c) =>
+        String(c.id) ===
+        String(classId)
+    );
+
+  if (!cls) {
+
+    showToast(
+      "Class not found."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      LESSONS
+    </div>
+
+    <h2>
+      ${escapeHtml(cls.title)}
+    </h2>
+
+    <p>
+      Lessons and learning materials for this class.
+    </p>
+
+    <div
+      id="classLessonsList"
+      class="card-grid">
+
+      <div class="empty">
+        Loading lessons...
+      </div>
+
+    </div>
+  `);
+
+  const lessons =
+    await loadClassLessons(
+      classId
+    );
+
+  const list =
+    $("#classLessonsList");
+
+  if (!list) return;
+
+  if (!lessons.length) {
+
+    list.innerHTML = `
+      <div class="empty">
+
+        <h3>
+          📚 No lessons yet
+        </h3>
+
+        <p>
+          Your teacher hasn't added any lessons yet.
+        </p>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  list.innerHTML =
+    lessons
+      .map(
+        (lesson, index) => `
+          <article class="class-card">
+
+            <div class="class-thumb">
+              ${
+                lesson.lesson_type === "recorded"
+                  ? "🎥"
+                  : "📖"
+              }
+            </div>
+
+            <div class="class-info">
+
+              <span class="badge">
+                Lesson ${index + 1}
+              </span>
+
+              <h3>
+                ${escapeHtml(
+                  lesson.title
+                )}
+              </h3>
+
+              <p>
+                ${escapeHtml(
+                  lesson.description ||
+                  "No description provided."
+                )}
+              </p>
+
+              ${
+                lesson.video_url
+                  ? `
+                    <button
+                      class="primary-btn"
+                      onclick="openLessonVideo('${lesson.id}')">
+
+                      ▶ Watch Lesson
+
+                    </button>
+                  `
+                  : `
+                    <span class="badge">
+                      📖 Reading lesson
+                    </span>
+                  `
+              }
+
+            </div>
+
+          </article>
+        `
+      )
+      .join("");
+}
+
+window.openLessons =
+  openLessons;
+
+/* =========================================================
+   OPEN LESSON VIDEO
+========================================================= */
+
+async function openLessonVideo(
+  lessonId
+) {
+
+  const {
+    data: lesson,
+    error
+  } =
+    await supabaseClient
+      .from("lessons")
+      .select(`
+        id,
+        title,
+        description,
+        video_url,
+        lesson_type
+      `)
+      .eq(
+        "id",
+        lessonId
+      )
+      .maybeSingle();
+
+  if (
+    error ||
+    !lesson
+  ) {
+
+    console.error(
+      "Lesson:",
+      error
+    );
+
+    showToast(
+      "Lesson not found."
+    );
+
+    return;
+  }
+
+  if (!lesson.video_url) {
+
+    showToast(
+      "This lesson has no video."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      LESSON
+    </div>
+
+    <h2>
+      ${escapeHtml(
+        lesson.title
+      )}
+    </h2>
+
+    <p>
+      ${escapeHtml(
+        lesson.description ||
+        ""
+      )}
+    </p>
+
+    <div style="
+      margin-top:20px;
+      overflow:hidden;
+      border-radius:18px;
+    ">
+
+      <video
+        controls
+        playsinline
+        preload="metadata"
+        style="
+          width:100%;
+          display:block;
+          border-radius:18px;
+        ">
+
+        <source
+          src="${escapeHtml(
+            lesson.video_url
+          )}"
+          type="video/mp4">
+
+        Your browser does not support video playback.
+
+      </video>
+
+    </div>
+  `);
+}
+
+window.openLessonVideo =
+  openLessonVideo;
+
+/* =========================================================
    CLASS DETAILS
 ========================================================= */
 
@@ -1242,11 +1559,17 @@ async function openClassDetails(id) {
 
   const cls =
     state.classes.find(
-      (c) => c.id === id
+      (c) =>
+        String(c.id) ===
+        String(id)
     );
 
   if (!cls) {
-    showToast("Class not found.");
+
+    showToast(
+      "Class not found."
+    );
+
     return;
   }
 
@@ -1327,20 +1650,50 @@ async function openClassDetails(id) {
 
     </div>
 
-    ${
-      state.role === "student"
-        ? `
-          <button
-            class="primary-btn"
-            onclick="joinClass('${cls.id}')">
+    <div style="
+      margin-top:18px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    ">
 
-            Join Class
+      ${
+        state.role === "student"
+          ? `
+            <button
+              class="primary-btn"
+              onclick="openLessons('${cls.id}')">
 
-          </button>
-        `
-        : ""
-    }
+              📚 View Lessons
 
+            </button>
+
+            <button
+              class="primary-btn"
+              onclick="joinClass('${cls.id}')">
+
+              Join Class
+
+            </button>
+          `
+          : ""
+      }
+
+      ${
+        state.role === "teacher"
+          ? `
+            <button
+              class="primary-btn"
+              onclick="openCreateLessonModal('${cls.id}')">
+
+              + Add Lesson
+
+            </button>
+          `
+          : ""
+      }
+
+    </div>
   `);
 }
 
@@ -1348,15 +1701,331 @@ window.openClassDetails =
   openClassDetails;
 
 /* =========================================================
+   CREATE LESSON MODAL
+========================================================= */
+
+async function openCreateLessonModal(
+  selectedClassId = ""
+) {
+
+  if (
+    !state.user ||
+    state.role !== "teacher"
+  ) {
+
+    showToast(
+      "Teacher access required."
+    );
+
+    return;
+  }
+
+  const {
+    data: classes,
+    error
+  } =
+    await supabaseClient
+      .from("classes")
+      .select(`
+        id,
+        title,
+        subjects (
+          name
+        )
+      `)
+      .eq(
+        "teacher_id",
+        state.user.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+  if (error) {
+
+    console.error(
+      "Lesson classes:",
+      error
+    );
+
+    showToast(
+      "Could not load your classes."
+    );
+
+    return;
+  }
+
+  if (!classes?.length) {
+
+    showToast(
+      "Create a class first."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      TEACHER
+    </div>
+
+    <h2>
+      Create Lesson
+    </h2>
+
+    <p>
+      Add a recorded lesson or learning material to your class.
+    </p>
+
+    <form
+      id="createLessonForm">
+
+      <label>
+        Class
+      </label>
+
+      <select
+        id="lessonClass"
+        required>
+
+        <option value="">
+          Select class
+        </option>
+
+        ${classes
+          .map(
+            (c) => `
+              <option
+                value="${c.id}"
+                ${
+                  String(c.id) ===
+                  String(selectedClassId)
+                    ? "selected"
+                    : ""
+                }>
+
+                ${escapeHtml(
+                  c.title
+                )}
+
+                ${
+                  c.subjects?.name
+                    ? " — " +
+                      escapeHtml(
+                        c.subjects.name
+                      )
+                    : ""
+                }
+
+              </option>
+            `
+          )
+          .join("")}
+
+      </select>
+
+      <label>
+        Lesson Title
+      </label>
+
+      <input
+        id="lessonTitle"
+        type="text"
+        placeholder="e.g. Chapter 1 — Algebra"
+        required
+      >
+
+      <label>
+        Description
+      </label>
+
+      <textarea
+        id="lessonDescription"
+        rows="5"
+        placeholder="Explain what students will learn..."
+      ></textarea>
+
+      <label>
+        Video URL
+      </label>
+
+      <input
+        id="lessonVideoUrl"
+        type="url"
+        placeholder="https://..."
+      >
+
+      <label>
+        Lesson Type
+      </label>
+
+      <select
+        id="lessonType">
+
+        <option value="recorded">
+          Recorded Video
+        </option>
+
+        <option value="reading">
+          Reading Material
+        </option>
+
+      </select>
+
+      <button
+        class="primary-btn"
+        type="submit">
+
+        Create Lesson
+
+      </button>
+
+    </form>
+  `);
+
+  $("#createLessonForm")
+    ?.addEventListener(
+      "submit",
+      createLesson
+    );
+}
+
+window.openCreateLessonModal =
+  openCreateLessonModal;
+
+/* =========================================================
+   CREATE LESSON ACTION
+========================================================= */
+
+async function createLesson(
+  event
+) {
+
+  event.preventDefault();
+
+  if (
+    !state.user ||
+    state.role !== "teacher"
+  ) {
+
+    showToast(
+      "Teacher access required."
+    );
+
+    return;
+  }
+
+  const classId =
+    $("#lessonClass")
+      ?.value;
+
+  const title =
+    $("#lessonTitle")
+      ?.value
+      .trim();
+
+  const description =
+    $("#lessonDescription")
+      ?.value
+      .trim();
+
+  const videoUrl =
+    $("#lessonVideoUrl")
+      ?.value
+      .trim();
+
+  const lessonType =
+    $("#lessonType")
+      ?.value ||
+    "recorded";
+
+  if (
+    !classId ||
+    !title
+  ) {
+
+    showToast(
+      "Please complete the required fields."
+    );
+
+    return;
+  }
+
+  const {
+    data: lesson,
+    error
+  } =
+    await supabaseClient
+      .from("lessons")
+      .insert({
+        class_id:
+          classId,
+
+        teacher_id:
+          state.user.id,
+
+        title,
+
+        description:
+          description || null,
+
+        video_url:
+          videoUrl || null,
+
+        lesson_type:
+          lessonType
+      })
+      .select()
+      .single();
+
+  if (error) {
+
+    console.error(
+      "Create lesson:",
+      error
+    );
+
+    showToast(
+      error.message ||
+      "Could not create lesson."
+    );
+
+    return;
+  }
+
+  console.log(
+    "Lesson created:",
+    lesson
+  );
+
+  closeModal();
+
+  showToast(
+    "Lesson created successfully!"
+  );
+
+  state.page =
+    "classes";
+
+  await renderPage();
+}
+
+/* =========================================================
    JOIN CLASS BY DATABASE ID
 ========================================================= */
 
-async function joinClass(classId) {
+async function joinClass(
+  classId
+) {
 
   if (
     !state.user ||
     state.role !== "student"
   ) {
+
     showToast(
       "Only students can join classes."
     );
@@ -1393,6 +2062,7 @@ async function joinClass(classId) {
     existing.error &&
     existing.error.code !== "PGRST116"
   ) {
+
     console.error(
       existing.error
     );
@@ -1402,9 +2072,14 @@ async function joinClass(classId) {
     await supabaseClient
       .from("class_members")
       .insert({
-        class_id: classId,
-        student_id: state.user.id,
-        status: "active"
+        class_id:
+          classId,
+
+        student_id:
+          state.user.id,
+
+        status:
+          "active"
       });
 
   if (error) {
@@ -1425,7 +2100,8 @@ async function joinClass(classId) {
     "Class joined successfully!"
   );
 
-  state.page = "home";
+  state.page =
+    "home";
 
   await renderPage();
 }
@@ -1502,10 +2178,11 @@ window.openJoinClassCodeModal =
 
 /* =========================================================
    JOIN CLASS BY CODE ACTION
-   FIXED VERSION
 ========================================================= */
 
-async function joinClassByCode(event) {
+async function joinClassByCode(
+  event
+) {
 
   event.preventDefault();
 
@@ -1538,26 +2215,23 @@ async function joinClassByCode(event) {
     return;
   }
 
-  /* =========================================
-     FIND CLASS
-  ========================================= */
-
   const {
     data: cls,
     error: classError
-  } = await supabaseClient
-    .from("classes")
-    .select(`
-      id,
-      title,
-      class_code,
-      is_published
-    `)
-    .eq(
-      "class_code",
-      classCode
-    )
-    .maybeSingle();
+  } =
+    await supabaseClient
+      .from("classes")
+      .select(`
+        id,
+        title,
+        class_code,
+        is_published
+      `)
+      .eq(
+        "class_code",
+        classCode
+      )
+      .maybeSingle();
 
   if (classError) {
 
@@ -1583,10 +2257,6 @@ async function joinClassByCode(event) {
     return;
   }
 
-  /* =========================================
-     CHECK PUBLISHED
-  ========================================= */
-
   if (!cls.is_published) {
 
     showToast(
@@ -1596,30 +2266,27 @@ async function joinClassByCode(event) {
     return;
   }
 
-  /* =========================================
-     CHECK EXISTING MEMBERSHIP
-  ========================================= */
-
   const {
     data: existingMember,
     error: existingError
-  } = await supabaseClient
-    .from("class_members")
-    .select(`
-      id,
-      class_id,
-      student_id,
-      status
-    `)
-    .eq(
-      "class_id",
-      cls.id
-    )
-    .eq(
-      "student_id",
-      state.user.id
-    )
-    .maybeSingle();
+  } =
+    await supabaseClient
+      .from("class_members")
+      .select(`
+        id,
+        class_id,
+        student_id,
+        status
+      `)
+      .eq(
+        "class_id",
+        cls.id
+      )
+      .eq(
+        "student_id",
+        state.user.id
+      )
+      .maybeSingle();
 
   if (existingError) {
 
@@ -1647,27 +2314,29 @@ async function joinClassByCode(event) {
     return;
   }
 
-  /* =========================================
-     INSERT MEMBERSHIP
-  ========================================= */
-
   const {
     data: joinedMember,
     error: joinError
-  } = await supabaseClient
-    .from("class_members")
-    .insert({
-      class_id: cls.id,
-      student_id: state.user.id,
-      status: "active"
-    })
-    .select(`
-      id,
-      class_id,
-      student_id,
-      status
-    `)
-    .single();
+  } =
+    await supabaseClient
+      .from("class_members")
+      .insert({
+        class_id:
+          cls.id,
+
+        student_id:
+          state.user.id,
+
+        status:
+          "active"
+      })
+      .select(`
+        id,
+        class_id,
+        student_id,
+        status
+      `)
+      .single();
 
   if (joinError) {
 
@@ -1683,10 +2352,6 @@ async function joinClassByCode(event) {
 
     return;
   }
-
-  /* =========================================
-     VERIFY SAVED DATA
-  ========================================= */
 
   if (
     !joinedMember ||
@@ -1709,25 +2374,6 @@ async function joinClassByCode(event) {
     "JOIN SUCCESS:",
     joinedMember
   );
-
-  console.log(
-    "CLASS ID:",
-    joinedMember.class_id
-  );
-
-  console.log(
-    "STUDENT ID:",
-    joinedMember.student_id
-  );
-
-  console.log(
-    "STATUS:",
-    joinedMember.status
-  );
-
-  /* =========================================
-     SUCCESS
-  ========================================= */
 
   closeModal();
 
@@ -1919,14 +2565,19 @@ async function loadReplays() {
       .join("");
 }
 
-async function openReplay(id) {
+async function openReplay(
+  id
+) {
 
   const replay =
     state.replayCache.find(
-      (r) => r.id === id
+      (r) =>
+        String(r.id) ===
+        String(id)
     );
 
   if (!replay) {
+
     showToast(
       "Replay not found."
     );
@@ -1975,7 +2626,10 @@ async function openReplay(id) {
 
   try {
 
-    const { data, error } =
+    const {
+      data,
+      error
+    } =
       await supabaseClient.functions.invoke(
         "create-replay-access",
         {
@@ -2543,9 +3197,12 @@ async function submitHomework(
         .insert({
           homework_id:
             homeworkId,
+
           student_id:
             state.user.id,
+
           answer,
+
           status:
             "submitted"
         });
@@ -4071,13 +4728,6 @@ $("#signupForm")
 
         return;
       }
-
-      /*
-       * CREATE PROFILE
-       *
-       * Do NOT add email here unless
-       * profiles table has an email column.
-       */
 
       if (data.user) {
 
