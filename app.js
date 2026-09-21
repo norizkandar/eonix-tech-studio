@@ -1502,6 +1502,7 @@ window.openJoinClassCodeModal =
 
 /* =========================================================
    JOIN CLASS BY CODE ACTION
+   FIXED VERSION
 ========================================================= */
 
 async function joinClassByCode(event) {
@@ -1520,10 +1521,12 @@ async function joinClassByCode(event) {
     return;
   }
 
+  const input =
+    $("#joinClassCode");
+
   let classCode =
-    $("#joinClassCode")
-      ?.value
-      .trim()
+    input?.value
+      ?.trim()
       .toUpperCase();
 
   if (!classCode) {
@@ -1535,30 +1538,36 @@ async function joinClassByCode(event) {
     return;
   }
 
-  const { data: cls, error } =
-    await supabaseClient
-      .from("classes")
-      .select(`
-        id,
-        title,
-        class_code,
-        is_published
-      `)
-      .eq(
-        "class_code",
-        classCode
-      )
-      .maybeSingle();
+  /* =========================================
+     FIND CLASS
+  ========================================= */
 
-  if (error) {
+  const {
+    data: cls,
+    error: classError
+  } = await supabaseClient
+    .from("classes")
+    .select(`
+      id,
+      title,
+      class_code,
+      is_published
+    `)
+    .eq(
+      "class_code",
+      classCode
+    )
+    .maybeSingle();
+
+  if (classError) {
 
     console.error(
       "Find class by code:",
-      error
+      classError
     );
 
     showToast(
-      error.message ||
+      classError.message ||
       "Could not find class."
     );
 
@@ -1574,6 +1583,10 @@ async function joinClassByCode(event) {
     return;
   }
 
+  /* =========================================
+     CHECK PUBLISHED
+  ========================================= */
+
   if (!cls.is_published) {
 
     showToast(
@@ -1583,21 +1596,47 @@ async function joinClassByCode(event) {
     return;
   }
 
-  const existing =
-    await supabaseClient
-      .from("class_members")
-      .select("id")
-      .eq(
-        "class_id",
-        cls.id
-      )
-      .eq(
-        "student_id",
-        state.user.id
-      )
-      .maybeSingle();
+  /* =========================================
+     CHECK EXISTING MEMBERSHIP
+  ========================================= */
 
-  if (existing.data) {
+  const {
+    data: existingMember,
+    error: existingError
+  } = await supabaseClient
+    .from("class_members")
+    .select(`
+      id,
+      class_id,
+      student_id,
+      status
+    `)
+    .eq(
+      "class_id",
+      cls.id
+    )
+    .eq(
+      "student_id",
+      state.user.id
+    )
+    .maybeSingle();
+
+  if (existingError) {
+
+    console.error(
+      "Check existing membership:",
+      existingError
+    );
+
+    showToast(
+      existingError.message ||
+      "Could not check enrollment."
+    );
+
+    return;
+  }
+
+  if (existingMember) {
 
     showToast(
       "You are already enrolled in this class."
@@ -1608,42 +1647,32 @@ async function joinClassByCode(event) {
     return;
   }
 
-  if (
-    existing.error &&
-    existing.error.code !== "PGRST116"
-  ) {
+  /* =========================================
+     INSERT MEMBERSHIP
+  ========================================= */
 
-    console.error(
-      "Existing membership:",
-      existing.error
-    );
-
-    showToast(
-      existing.error.message ||
-      "Could not check enrollment."
-    );
-
-    return;
-  }
-
-  const { error: joinError } =
-    await supabaseClient
-      .from("class_members")
-      .insert({
-        class_id:
-          cls.id,
-
-        student_id:
-          state.user.id,
-
-        status:
-          "active"
-      });
+  const {
+    data: joinedMember,
+    error: joinError
+  } = await supabaseClient
+    .from("class_members")
+    .insert({
+      class_id: cls.id,
+      student_id: state.user.id,
+      status: "active"
+    })
+    .select(`
+      id,
+      class_id,
+      student_id,
+      status
+    `)
+    .single();
 
   if (joinError) {
 
     console.error(
-      "Join class:",
+      "Join class error:",
       joinError
     );
 
@@ -1654,6 +1683,51 @@ async function joinClassByCode(event) {
 
     return;
   }
+
+  /* =========================================
+     VERIFY SAVED DATA
+  ========================================= */
+
+  if (
+    !joinedMember ||
+    !joinedMember.class_id
+  ) {
+
+    console.error(
+      "Membership created but class_id is missing:",
+      joinedMember
+    );
+
+    showToast(
+      "Class joined, but class ID was not saved."
+    );
+
+    return;
+  }
+
+  console.log(
+    "JOIN SUCCESS:",
+    joinedMember
+  );
+
+  console.log(
+    "CLASS ID:",
+    joinedMember.class_id
+  );
+
+  console.log(
+    "STUDENT ID:",
+    joinedMember.student_id
+  );
+
+  console.log(
+    "STATUS:",
+    joinedMember.status
+  );
+
+  /* =========================================
+     SUCCESS
+  ========================================= */
 
   closeModal();
 
@@ -3445,21 +3519,8 @@ async function createClass(
     return;
   }
 
-  /*
-   * Generate a unique-looking human-friendly
-   * class code.
-   *
-   * Example:
-   * ST-K7P2Q9
-   */
-
   let classCode =
     generateClassCode();
-
-  /*
-   * Check whether the generated code already exists.
-   * If it exists, generate another one.
-   */
 
   let codeCheck =
     await supabaseClient
