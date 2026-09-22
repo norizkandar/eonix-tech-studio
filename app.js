@@ -4218,9 +4218,7 @@ window.openCreateNoteModal =
    CREATE NOTE ACTION
 ========================================================= */
 
-async function createNote(
-  event
-) {
+async function createNote(event) {
 
   event.preventDefault();
 
@@ -4228,42 +4226,26 @@ async function createNote(
     !state.user ||
     state.role !== "teacher"
   ) {
-
-    showToast(
-      "Teacher access required."
-    );
-
+    showToast("Teacher access required.");
     return;
   }
 
   const classId =
-    $("#noteClass")
-      ?.value;
+    $("#noteClass")?.value;
 
   const title =
-    $("#noteTitle")
-      ?.value
-      .trim();
+    $("#noteTitle")?.value.trim();
 
   const description =
-    $("#noteDescription")
-      ?.value
-      .trim();
+    $("#noteDescription")?.value.trim();
 
   const fileUrl =
-    $("#noteFileUrl")
-      ?.value
-      .trim();
+    $("#noteFileUrl")?.value.trim();
 
-  if (
-    !classId ||
-    !title
-  ) {
-
+  if (!classId || !title) {
     showToast(
       "Please complete the required fields."
     );
-
     return;
   }
 
@@ -4271,19 +4253,10 @@ async function createNote(
     await supabaseClient
       .from("notes")
       .insert({
-        class_id:
-          classId,
-
-        teacher_id:
-          state.user.id,
-
-        title,
-
-        description:
-          description || null,
-
-        file_url:
-          fileUrl || null
+        class_id: classId,
+        title: title,
+        description: description || null,
+        file_url: fileUrl || null
       });
 
   if (error) {
@@ -4307,8 +4280,7 @@ async function createNote(
     "Note created successfully!"
   );
 
-  state.page =
-    "notes";
+  state.page = "notes";
 
   await renderPage();
 }
