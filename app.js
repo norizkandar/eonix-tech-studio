@@ -4631,7 +4631,6 @@ async function loadChatMessages() {
    NOTIFICATIONS
 ========================================================= */
 
-```js
 async function renderNotifications() {
 
   await loadNotifications();
