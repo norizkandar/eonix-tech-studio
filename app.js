@@ -4495,67 +4495,68 @@ async function renderProgress() {
 async function renderChat() {
   const app = $("#app");
 
-  if (!app) return;
+  if (!app || !state.user) return;
 
-  if (!state.user) {
-    renderSimple(
-      "Messages",
-      "MESSAGES",
-      "Please sign in to use messages."
-    );
+  const { data: users, error } = await supabaseClient
+    .from("profiles")
+    .select("id, full_name, role")
+    .in("role", ["teacher", "student"])
+    .order("full_name");
+
+  if (error) {
+    console.error(error);
+    showToast("Unable to load users.");
     return;
   }
 
+  const otherUsers = (users || []).filter(
+    user => user.id !== state.user.id
+  );
+
   app.innerHTML = `
     <section class="page-section">
+
       <div class="page-header">
         <div>
           <div class="eyebrow">MESSAGES</div>
           <h1>Messages</h1>
-          <p>Chat with your teachers and classmates.</p>
+          <p>Chat with teachers and students.</p>
         </div>
       </div>
 
       <div class="card" style="margin-top:20px;">
-        <div style="
-          display:flex;
-          align-items:center;
-          gap:12px;
-          padding:12px 0;
-          border-bottom:1px solid rgba(255,255,255,.08);
-        ">
-          <div style="
-            width:44px;
-            height:44px;
-            border-radius:50%;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:linear-gradient(135deg,#00d084,#00b7ff);
-            color:white;
-            font-weight:700;
-          ">
-            💬
-          </div>
 
-          <div>
-            <strong>Smart Tuisyen Chat</strong>
-            <div style="opacity:.65;font-size:13px;">
-              Your messages will appear here.
-            </div>
-          </div>
-        </div>
+        <label style="display:block;margin-bottom:8px;">
+          Chat with
+        </label>
 
-        <div id="chatMessages" style="
-          min-height:300px;
-          padding:20px 0;
-        ">
+        <select id="chatUser" style="width:100%;margin-bottom:15px;">
+          <option value="">Select a person...</option>
+
+          ${otherUsers.map(user => `
+            <option value="${user.id}">
+              ${escapeHtml(user.full_name || "User")}
+              — ${user.role === "teacher" ? "Teacher" : "Student"}
+            </option>
+          `).join("")}
+
+        </select>
+
+        <div
+          id="chatMessages"
+          style="
+            min-height:300px;
+            max-height:400px;
+            overflow-y:auto;
+            padding:15px 0;
+          "
+        >
           <div style="
             text-align:center;
             opacity:.6;
             padding:80px 20px;
           ">
-            No messages yet.
+            Select someone to start chatting.
           </div>
         </div>
 
@@ -4565,6 +4566,7 @@ async function renderChat() {
           border-top:1px solid rgba(255,255,255,.08);
           padding-top:15px;
         ">
+
           <input
             id="chatInput"
             type="text"
@@ -4577,56 +4579,68 @@ async function renderChat() {
           <button type="submit">
             Send
           </button>
+
         </form>
+
       </div>
+
     </section>
   `;
 
+  const select = $("#chatUser");
   const form = $("#chatForm");
   const input = $("#chatInput");
 
-  if (form) {
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
+  select.addEventListener("change", async () => {
+    await loadChatMessages(select.value);
+  });
 
-      const message = input.value.trim();
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-      if (!message) return;
+    const receiverId = select.value;
+    const message = input.value.trim();
 
-      const { error } = await supabaseClient
-        .from("chat_messages")
-        .insert({
-          sender_id: state.user.id,
-          receiver_id: state.user.id,
-          message
-        });
+    if (!receiverId) {
+      showToast("Please select someone first.");
+      return;
+    }
 
-      if (error) {
-        console.error(error);
-        showToast("Failed to send message.");
-        return;
-      }
+    if (!message) return;
 
-      input.value = "";
+    const { error } = await supabaseClient
+      .from("chat_messages")
+      .insert({
+        sender_id: state.user.id,
+        receiver_id: receiverId,
+        message: message
+      });
 
-      await loadChatMessages();
-    });
-  }
+    if (error) {
+      console.error(error);
+      showToast("Message failed to send.");
+      return;
+    }
 
-  await loadChatMessages();
+    input.value = "";
+
+    await loadChatMessages(receiverId);
+  });
 }
 
 
-async function loadChatMessages() {
+async function loadChatMessages(receiverId) {
   const box = $("#chatMessages");
 
-  if (!box || !state.user) return;
+  if (!box || !state.user || !receiverId) return;
+
+  const myId = state.user.id;
 
   const { data, error } = await supabaseClient
     .from("chat_messages")
     .select("*")
     .or(
-      `sender_id.eq.${state.user.id},receiver_id.eq.${state.user.id}`
+      `and(sender_id.eq.${myId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${myId})`
     )
     .order("created_at", { ascending: true });
 
@@ -4645,14 +4659,15 @@ async function loadChatMessages() {
   if (!data || data.length === 0) {
     box.innerHTML = `
       <div style="text-align:center;opacity:.6;padding:80px 20px;">
-        No messages yet.
+        No messages yet. Start the conversation 👋
       </div>
     `;
+
     return;
   }
 
-  box.innerHTML = data.map((item) => {
-    const mine = item.sender_id === state.user.id;
+  box.innerHTML = data.map(item => {
+    const mine = item.sender_id === myId;
 
     return `
       <div style="
@@ -4664,9 +4679,11 @@ async function loadChatMessages() {
           max-width:75%;
           padding:10px 14px;
           border-radius:16px;
-          background:${mine
-            ? "linear-gradient(135deg,#00d084,#00b7ff)"
-            : "rgba(255,255,255,.08)"};
+          background:${
+            mine
+              ? "linear-gradient(135deg,#00d084,#00b7ff)"
+              : "rgba(255,255,255,.08)"
+          };
           color:white;
         ">
           ${escapeHtml(item.message)}
@@ -4674,6 +4691,8 @@ async function loadChatMessages() {
       </div>
     `;
   }).join("");
+
+  box.scrollTop = box.scrollHeight;
 }
 
 /* =========================================================
