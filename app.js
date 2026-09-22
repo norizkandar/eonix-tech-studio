@@ -244,8 +244,10 @@ async function loadProfile() {
 
     role
   };
+  
+    state.role = role;
 
-  state.role = role;
+  console.log("CURRENT ROLE:", role);
 }
 
 /* =========================================================
