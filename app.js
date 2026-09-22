@@ -142,6 +142,7 @@ const NAV = {
     ["classes", "▣", "Classes"],
     ["replay", "▶", "Replay"],
     ["homework", "✓", "Homework"],
+    ["notes", "✎", "Notes"],
     ["quiz", "?", "Quiz"],
     ["chat", "◌", "Messages"],
     ["notifications", "🔔", "Notifications"],
