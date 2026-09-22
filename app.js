@@ -4493,12 +4493,187 @@ async function renderProgress() {
 ========================================================= */
 
 async function renderChat() {
+  const app = $("#app");
 
-  renderSimple(
-    "Messages",
-    "MESSAGES",
-    "Secure communication between students, teachers and parents."
-  );
+  if (!app) return;
+
+  if (!state.user) {
+    renderSimple(
+      "Messages",
+      "MESSAGES",
+      "Please sign in to use messages."
+    );
+    return;
+  }
+
+  app.innerHTML = `
+    <section class="page-section">
+      <div class="page-header">
+        <div>
+          <div class="eyebrow">MESSAGES</div>
+          <h1>Messages</h1>
+          <p>Chat with your teachers and classmates.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <div style="
+          display:flex;
+          align-items:center;
+          gap:12px;
+          padding:12px 0;
+          border-bottom:1px solid rgba(255,255,255,.08);
+        ">
+          <div style="
+            width:44px;
+            height:44px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(135deg,#00d084,#00b7ff);
+            color:white;
+            font-weight:700;
+          ">
+            💬
+          </div>
+
+          <div>
+            <strong>Smart Tuisyen Chat</strong>
+            <div style="opacity:.65;font-size:13px;">
+              Your messages will appear here.
+            </div>
+          </div>
+        </div>
+
+        <div id="chatMessages" style="
+          min-height:300px;
+          padding:20px 0;
+        ">
+          <div style="
+            text-align:center;
+            opacity:.6;
+            padding:80px 20px;
+          ">
+            No messages yet.
+          </div>
+        </div>
+
+        <form id="chatForm" style="
+          display:flex;
+          gap:10px;
+          border-top:1px solid rgba(255,255,255,.08);
+          padding-top:15px;
+        ">
+          <input
+            id="chatInput"
+            type="text"
+            placeholder="Type a message..."
+            autocomplete="off"
+            style="flex:1;"
+            required
+          />
+
+          <button type="submit">
+            Send
+          </button>
+        </form>
+      </div>
+    </section>
+  `;
+
+  const form = $("#chatForm");
+  const input = $("#chatInput");
+
+  if (form) {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      const { error } = await supabaseClient
+        .from("chat_messages")
+        .insert({
+          sender_id: state.user.id,
+          receiver_id: state.user.id,
+          message
+        });
+
+      if (error) {
+        console.error(error);
+        showToast("Failed to send message.");
+        return;
+      }
+
+      input.value = "";
+
+      await loadChatMessages();
+    });
+  }
+
+  await loadChatMessages();
+}
+
+
+async function loadChatMessages() {
+  const box = $("#chatMessages");
+
+  if (!box || !state.user) return;
+
+  const { data, error } = await supabaseClient
+    .from("chat_messages")
+    .select("*")
+    .or(
+      `sender_id.eq.${state.user.id},receiver_id.eq.${state.user.id}`
+    )
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error(error);
+
+    box.innerHTML = `
+      <div style="text-align:center;opacity:.6;padding:60px 20px;">
+        Unable to load messages.
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `
+      <div style="text-align:center;opacity:.6;padding:80px 20px;">
+        No messages yet.
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML = data.map((item) => {
+    const mine = item.sender_id === state.user.id;
+
+    return `
+      <div style="
+        display:flex;
+        justify-content:${mine ? "flex-end" : "flex-start"};
+        margin-bottom:10px;
+      ">
+        <div style="
+          max-width:75%;
+          padding:10px 14px;
+          border-radius:16px;
+          background:${mine
+            ? "linear-gradient(135deg,#00d084,#00b7ff)"
+            : "rgba(255,255,255,.08)"};
+          color:white;
+        ">
+          ${escapeHtml(item.message)}
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 /* =========================================================
