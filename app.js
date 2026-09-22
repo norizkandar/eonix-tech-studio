@@ -3669,14 +3669,778 @@ async function createHomework(
    NOTES
 ========================================================= */
 
-function renderNotes() {
+async function renderNotes() {
 
-  renderSimple(
-    "Your Notes",
-    "NOTES",
-    "Keep your lesson notes in one place."
-  );
+  if (state.role === "teacher") {
+    return renderTeacherNotes();
+  }
+
+  if (state.role === "parent") {
+    return renderSimple(
+      "Child Notes",
+      "NOTES",
+      "Your child's learning notes will appear here."
+    );
+  }
+
+  return renderStudentNotes();
 }
+
+/* =========================================================
+   STUDENT NOTES
+========================================================= */
+
+async function renderStudentNotes() {
+
+  $("#content").innerHTML = `
+    <div class="page-head">
+
+      <div>
+        <div class="eyebrow">
+          NOTES
+        </div>
+
+        <h1>
+          Your Notes
+        </h1>
+
+        <p>
+          Lesson notes and learning materials from your classes.
+        </p>
+      </div>
+
+    </div>
+
+    <div
+      id="notesList"
+      class="card-grid">
+
+      <div class="empty">
+        Loading notes...
+      </div>
+
+    </div>
+  `;
+
+  const { data, error } =
+    await supabaseClient
+      .from("notes")
+      .select(`
+        id,
+        class_id,
+        title,
+        description,
+        file_url,
+        created_at,
+        classes (
+          id,
+          title,
+          subjects (
+            name
+          )
+        )
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+  const list = $("#notesList");
+
+  if (error) {
+
+    console.error(
+      "Student notes:",
+      error
+    );
+
+    list.innerHTML = `
+      <div class="empty">
+
+        <h3>
+          Unable to load notes
+        </h3>
+
+        <p>
+          ${escapeHtml(error.message)}
+        </p>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!data?.length) {
+
+    list.innerHTML = `
+      <div class="empty">
+
+        <h3>
+          📖 No notes yet
+        </h3>
+
+        <p>
+          Notes from your classes will appear here.
+        </p>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  list.innerHTML =
+    data
+      .map(
+        (note) => `
+          <article class="class-card">
+
+            <div class="class-thumb">
+              📖
+            </div>
+
+            <div class="class-info">
+
+              <span class="badge">
+                ${escapeHtml(
+                  note.classes?.subjects?.name ||
+                  "Note"
+                )}
+              </span>
+
+              <h3>
+                ${escapeHtml(
+                  note.title
+                )}
+              </h3>
+
+              <p>
+                ${escapeHtml(
+                  note.description ||
+                  "No description provided."
+                )}
+              </p>
+
+              <p>
+                📚
+                ${escapeHtml(
+                  note.classes?.title ||
+                  "Class"
+                )}
+              </p>
+
+              ${
+                note.file_url
+                  ? `
+                    <button
+                      class="primary-btn"
+                      onclick="openNote('${note.id}')">
+
+                      📄 Open Note
+
+                    </button>
+                  `
+                  : `
+                    <span class="badge">
+                      📝 Text Note
+                    </span>
+                  `
+              }
+
+            </div>
+
+          </article>
+        `
+      )
+      .join("");
+}
+
+/* =========================================================
+   TEACHER NOTES
+========================================================= */
+
+async function renderTeacherNotes() {
+
+  $("#content").innerHTML = `
+    <div class="page-head">
+
+      <div>
+
+        <div class="eyebrow">
+          TEACHER
+        </div>
+
+        <h1>
+          Notes Manager
+        </h1>
+
+        <p>
+          Create learning notes and share them with your students.
+        </p>
+
+      </div>
+
+      <button
+        class="primary-btn"
+        onclick="openCreateNoteModal()">
+
+        + Add Note
+
+      </button>
+
+    </div>
+
+    <div
+      id="teacherNotesList"
+      class="card-grid">
+
+      <div class="empty">
+        Loading notes...
+      </div>
+
+    </div>
+  `;
+
+  const { data, error } =
+    await supabaseClient
+      .from("notes")
+      .select(`
+        id,
+        class_id,
+        title,
+        description,
+        file_url,
+        created_at,
+        classes (
+          id,
+          title,
+          subjects (
+            name
+          )
+        )
+      `)
+      .eq(
+        "teacher_id",
+        state.user.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+  const list =
+    $("#teacherNotesList");
+
+  if (error) {
+
+    console.error(
+      "Teacher notes:",
+      error
+    );
+
+    list.innerHTML = `
+      <div class="empty">
+
+        <h3>
+          Unable to load notes
+        </h3>
+
+        <p>
+          ${escapeHtml(
+            error.message
+          )}
+        </p>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!data?.length) {
+
+    list.innerHTML = `
+      <div class="empty">
+
+        <h3>
+          📖 No notes yet
+        </h3>
+
+        <p>
+          Create your first learning note.
+        </p>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  list.innerHTML =
+    data
+      .map(
+        (note) => `
+          <article class="class-card">
+
+            <div class="class-thumb">
+              📖
+            </div>
+
+            <div class="class-info">
+
+              <span class="badge">
+                ${escapeHtml(
+                  note.classes?.subjects?.name ||
+                  "Note"
+                )}
+              </span>
+
+              <h3>
+                ${escapeHtml(
+                  note.title
+                )}
+              </h3>
+
+              <p>
+                ${escapeHtml(
+                  note.description ||
+                  "No description provided."
+                )}
+              </p>
+
+              <p>
+                📚
+                ${escapeHtml(
+                  note.classes?.title ||
+                  "Class"
+                )}
+              </p>
+
+              ${
+                note.file_url
+                  ? `
+                    <button
+                      class="primary-btn"
+                      onclick="openNote('${note.id}')">
+
+                      📄 Open Note
+
+                    </button>
+                  `
+                  : ""
+              }
+
+            </div>
+
+          </article>
+        `
+      )
+      .join("");
+}
+
+/* =========================================================
+   CREATE NOTE MODAL
+========================================================= */
+
+async function openCreateNoteModal() {
+
+  if (
+    !state.user ||
+    state.role !== "teacher"
+  ) {
+
+    showToast(
+      "Teacher access required."
+    );
+
+    return;
+  }
+
+  const {
+    data: classes,
+    error
+  } =
+    await supabaseClient
+      .from("classes")
+      .select(`
+        id,
+        title,
+        subjects (
+          name
+        )
+      `)
+      .eq(
+        "teacher_id",
+        state.user.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+  if (error) {
+
+    console.error(
+      "Note classes:",
+      error
+    );
+
+    showToast(
+      "Could not load your classes."
+    );
+
+    return;
+  }
+
+  if (!classes?.length) {
+
+    showToast(
+      "Create a class first."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      TEACHER
+    </div>
+
+    <h2>
+      Add Note
+    </h2>
+
+    <p>
+      Share a learning note with your class.
+    </p>
+
+    <form
+      id="createNoteForm">
+
+      <label>
+        Class
+      </label>
+
+      <select
+        id="noteClass"
+        required>
+
+        <option value="">
+          Select class
+        </option>
+
+        ${classes
+          .map(
+            (c) => `
+              <option
+                value="${c.id}">
+
+                ${escapeHtml(
+                  c.title
+                )}
+
+                ${
+                  c.subjects?.name
+                    ? " — " +
+                      escapeHtml(
+                        c.subjects.name
+                      )
+                    : ""
+                }
+
+              </option>
+            `
+          )
+          .join("")}
+
+      </select>
+
+      <label>
+        Note Title
+      </label>
+
+      <input
+        id="noteTitle"
+        type="text"
+        placeholder="e.g. Chapter 1 — Algebra"
+        required
+      >
+
+      <label>
+        Description
+      </label>
+
+      <textarea
+        id="noteDescription"
+        rows="6"
+        placeholder="Explain the topic or note..."
+      ></textarea>
+
+      <label>
+        File URL
+      </label>
+
+      <input
+        id="noteFileUrl"
+        type="url"
+        placeholder="https://..."
+      >
+
+      <button
+        class="primary-btn"
+        type="submit">
+
+        Save Note
+
+      </button>
+
+    </form>
+  `);
+
+  $("#createNoteForm")
+    ?.addEventListener(
+      "submit",
+      createNote
+    );
+}
+
+window.openCreateNoteModal =
+  openCreateNoteModal;
+
+/* =========================================================
+   CREATE NOTE ACTION
+========================================================= */
+
+async function createNote(
+  event
+) {
+
+  event.preventDefault();
+
+  if (
+    !state.user ||
+    state.role !== "teacher"
+  ) {
+
+    showToast(
+      "Teacher access required."
+    );
+
+    return;
+  }
+
+  const classId =
+    $("#noteClass")
+      ?.value;
+
+  const title =
+    $("#noteTitle")
+      ?.value
+      .trim();
+
+  const description =
+    $("#noteDescription")
+      ?.value
+      .trim();
+
+  const fileUrl =
+    $("#noteFileUrl")
+      ?.value
+      .trim();
+
+  if (
+    !classId ||
+    !title
+  ) {
+
+    showToast(
+      "Please complete the required fields."
+    );
+
+    return;
+  }
+
+  const { error } =
+    await supabaseClient
+      .from("notes")
+      .insert({
+        class_id:
+          classId,
+
+        teacher_id:
+          state.user.id,
+
+        title,
+
+        description:
+          description || null,
+
+        file_url:
+          fileUrl || null
+      });
+
+  if (error) {
+
+    console.error(
+      "Create note:",
+      error
+    );
+
+    showToast(
+      error.message ||
+      "Could not create note."
+    );
+
+    return;
+  }
+
+  closeModal();
+
+  showToast(
+    "Note created successfully!"
+  );
+
+  state.page =
+    "notes";
+
+  await renderPage();
+}
+
+/* =========================================================
+   OPEN NOTE
+========================================================= */
+
+async function openNote(
+  noteId
+) {
+
+  const {
+    data: note,
+    error
+  } =
+    await supabaseClient
+      .from("notes")
+      .select(`
+        id,
+        class_id,
+        title,
+        description,
+        file_url,
+        created_at,
+        classes (
+          id,
+          title,
+          subjects (
+            name
+          )
+        )
+      `)
+      .eq(
+        "id",
+        noteId
+      )
+      .maybeSingle();
+
+  if (
+    error ||
+    !note
+  ) {
+
+    console.error(
+      "Open note:",
+      error
+    );
+
+    showToast(
+      "Note not found."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      NOTE
+    </div>
+
+    <h2>
+      ${escapeHtml(
+        note.title
+      )}
+    </h2>
+
+    <p>
+      ${escapeHtml(
+        note.description ||
+        "No description provided."
+      )}
+    </p>
+
+    <div class="panel">
+
+      <p>
+        <strong>
+          Class:
+        </strong>
+
+        ${escapeHtml(
+          note.classes?.title ||
+          "Class"
+        )}
+      </p>
+
+      <p>
+        <strong>
+          Subject:
+        </strong>
+
+        ${escapeHtml(
+          note.classes?.subjects?.name ||
+          "Subject"
+        )}
+      </p>
+
+    </div>
+
+    ${
+      note.file_url
+        ? `
+          <div style="
+            margin-top:18px;
+          ">
+
+            <a
+              href="${escapeHtml(
+                note.file_url
+              )}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="primary-btn"
+              style="
+                display:inline-block;
+                text-decoration:none;
+              ">
+
+              📄 Open File
+
+            </a>
+
+          </div>
+        `
+        : ""
+    }
+  `);
+}
+
+window.openNote =
+  openNote;
 
 /* =========================================================
    QUIZ
