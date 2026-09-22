@@ -4493,11 +4493,169 @@ async function renderProgress() {
 ========================================================= */
 
 async function renderChat() {
-  renderSimple(
-    "Messages",
-    "MESSAGES",
-    "Chat with teachers, students and parents."
-  );
+  const app = $("#app");
+
+  if (!app || !state.user) return;
+
+  app.innerHTML = `
+    <section class="page-section">
+
+      <div class="page-header">
+        <div>
+          <div class="eyebrow">MESSAGES</div>
+          <h1>Messages</h1>
+          <p>Chat with your teacher.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+
+        <div id="chatMessages"
+          style="
+            min-height:300px;
+            max-height:400px;
+            overflow-y:auto;
+            padding:15px 0;
+          ">
+          Loading messages...
+        </div>
+
+        <form id="chatForm"
+          style="
+            display:flex;
+            gap:10px;
+            border-top:1px solid rgba(255,255,255,.08);
+            padding-top:15px;
+          ">
+
+          <input
+            id="chatInput"
+            type="text"
+            placeholder="Type a message..."
+            style="flex:1;"
+            autocomplete="off"
+            required
+          >
+
+          <button type="submit">
+            Send
+          </button>
+
+        </form>
+
+      </div>
+
+    </section>
+  `;
+
+  await loadChatMessages();
+
+  const form = $("#chatForm");
+  const input = $("#chatInput");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    const { error } = await supabaseClient
+      .from("chat_messages")
+      .insert({
+        sender_id: state.user.id,
+        receiver_id: "e7ea95d5-e6f4-4f69-a5e4-73e977d45c7a",
+        message: text
+      });
+
+    if (error) {
+      console.error(error);
+      showToast(error.message);
+      return;
+    }
+
+    input.value = "";
+
+    await loadChatMessages();
+  });
+}
+
+
+async function loadChatMessages() {
+  const box = $("#chatMessages");
+
+  if (!box || !state.user) return;
+
+  const teacherId =
+    "e7ea95d5-e6f4-4f69-a5e4-73e977d45c7a";
+
+  const myId = state.user.id;
+
+  const { data, error } = await supabaseClient
+    .from("chat_messages")
+    .select("*")
+    .or(
+      `and(sender_id.eq.${myId},receiver_id.eq.${teacherId}),and(sender_id.eq.${teacherId},receiver_id.eq.${myId})`
+    )
+    .order("created_at", {
+      ascending: true
+    });
+
+  if (error) {
+    console.error(error);
+    box.innerHTML = `
+      <div style="padding:40px;text-align:center;">
+        ${escapeHtml(error.message)}
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `
+      <div style="
+        text-align:center;
+        opacity:.6;
+        padding:100px 20px;
+      ">
+        No messages yet 👋
+      </div>
+    `;
+    return;
+  }
+
+  box.innerHTML = data.map(item => {
+
+    const mine = item.sender_id === myId;
+
+    return `
+      <div style="
+        display:flex;
+        justify-content:${mine ? "flex-end" : "flex-start"};
+        margin-bottom:12px;
+      ">
+
+        <div style="
+          max-width:75%;
+          padding:12px 16px;
+          border-radius:18px;
+          background:${
+            mine
+              ? "linear-gradient(135deg,#00d084,#00b7ff)"
+              : "rgba(255,255,255,.1)"
+          };
+        ">
+
+          ${escapeHtml(item.message)}
+
+        </div>
+
+      </div>
+    `;
+
+  }).join("");
+
+  box.scrollTop = box.scrollHeight;
 }
 
 /* =========================================================
