@@ -4631,6 +4631,7 @@ async function loadChatMessages() {
    NOTIFICATIONS
 ========================================================= */
 
+```js
 async function renderNotifications() {
 
   await loadNotifications();
@@ -4674,7 +4675,7 @@ async function renderNotifications() {
 
                     <p>
                       ${escapeHtml(
-                        n.body ||
+                        n.messagge ||
                         ""
                       )}
                     </p>
