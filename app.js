@@ -3925,10 +3925,7 @@ async function renderTeacherNotes() {
           )
         )
       `)
-      .eq(
-        "teacher_id",
-        state.user.id
-      )
+      
       .order(
         "created_at",
         {
