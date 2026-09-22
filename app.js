@@ -3134,18 +3134,15 @@ async function submitHomework(
   homeworkId,
   existingSubmission
 ) {
-
   event.preventDefault();
 
   if (
     !state.user ||
     state.role !== "student"
   ) {
-
     showToast(
       "Student access required."
     );
-
     return;
   }
 
@@ -3155,11 +3152,9 @@ async function submitHomework(
       .trim();
 
   if (!answer) {
-
     showToast(
       "Please write your answer."
     );
-
     return;
   }
 
@@ -3174,7 +3169,6 @@ async function submitHomework(
         )
         .update({
           answer,
-          status: "submitted",
           submitted_at:
             new Date().toISOString()
         })
@@ -3203,8 +3197,8 @@ async function submitHomework(
 
           answer,
 
-          status:
-            "submitted"
+          submitted_at:
+            new Date().toISOString()
         });
   }
 
