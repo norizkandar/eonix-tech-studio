@@ -4675,7 +4675,7 @@ async function renderNotifications() {
 
                     <p>
                       ${escapeHtml(
-                        n.messagge ||
+                        n.message ||
                         ""
                       )}
                     </p>
