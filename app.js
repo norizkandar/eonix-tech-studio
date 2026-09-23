@@ -6519,7 +6519,7 @@ async function renderProgress() {
 
 async function renderChat() {
 
-  const app = $("#app");
+  const app = $("#content");
 
   if (!app || !state.user) return;
 
