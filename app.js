@@ -1693,7 +1693,7 @@ async function renderStudentQuiz() {
 
   if (!box) return;
 
-  const { data, error } =
+  const { data: quizzes, error: quizError } =
     await supabaseClient
       .from("quizzes")
       .select(`
@@ -1701,6 +1701,7 @@ async function renderStudentQuiz() {
         title,
         description,
         time_limit_minutes,
+        created_at,
         classes (
           title
         )
@@ -1709,19 +1710,97 @@ async function renderStudentQuiz() {
         ascending: false
       });
 
-  if (error) {
-    console.error(error);
+  if (quizError) {
+
+    console.error(quizError);
 
     box.innerHTML = `
       <div class="empty">
-        ${escapeHtml(error.message)}
+        ${escapeHtml(
+          quizError.message
+        )}
       </div>
     `;
 
     return;
   }
 
+
+  /* =====================================================
+     GET STUDENT ATTEMPTS
+  ===================================================== */
+
+  const { data: attempts, error: attemptError } =
+    await supabaseClient
+      .from("quiz_attempts")
+      .select(`
+        id,
+        quiz_id,
+        score,
+        started_at,
+        completed_at
+      `)
+      .eq(
+        "student_id",
+        state.user.id
+      )
+      .order(
+        "completed_at",
+        {
+          ascending: false
+        }
+      );
+
+  if (attemptError) {
+
+    console.error(attemptError);
+
+    box.innerHTML = `
+      <div class="empty">
+        ${escapeHtml(
+          attemptError.message
+        )}
+      </div>
+    `;
+
+    return;
+  }
+
+
+  /* =====================================================
+     CREATE ATTEMPT MAP
+  ===================================================== */
+
+  const attemptMap = {};
+
+  (attempts || []).forEach(
+    (attempt) => {
+
+      /*
+       * Keep latest attempt
+       */
+      if (
+        !attemptMap[
+          attempt.quiz_id
+        ]
+      ) {
+
+        attemptMap[
+          attempt.quiz_id
+        ] = attempt;
+
+      }
+
+    }
+  );
+
+
+  /* =====================================================
+     PAGE
+  ===================================================== */
+
   box.innerHTML = `
+
     <div class="page-head">
 
       <div>
@@ -1735,78 +1814,315 @@ async function renderStudentQuiz() {
         </h1>
 
         <p>
-          Test your knowledge.
+          Test your knowledge and track your results.
         </p>
 
       </div>
 
     </div>
 
+
+    <!-- QUIZ LIST -->
+
     <div class="panel">
 
-      ${
-        data?.length
-          ? data
-              .map(
-                (quiz) => `
-                  <div class="list-item">
+      <h2>
+        Available Quizzes
+      </h2>
 
-                    <strong>
-                      📝
-                      ${escapeHtml(
-                        quiz.title
-                      )}
-                    </strong>
+      <div
+        style="
+          margin-top:18px;
+        ">
 
-                    <p>
-                      ${escapeHtml(
-                        quiz.description ||
-                        "No description"
-                      )}
-                    </p>
+        ${
+          quizzes &&
+          quizzes.length > 0
 
-                    <small>
-                      ⏱
-                      ${
-                        quiz.time_limit_minutes ||
-                        0
-                      }
-                      minutes
-                    </small>
+            ? quizzes
+                .map(
+                  (quiz) => {
 
-                    <br><br>
+                    const attempt =
+                      attemptMap[
+                        quiz.id
+                      ];
 
-                    <button
-                      class="primary-btn"
-                      onclick="startQuiz('${quiz.id}')">
+                    return `
 
-                      Start Quiz
+                      <div
+                        class="list-item"
+                        style="
+                          margin-bottom:16px;
+                        ">
 
-                    </button>
+                        <strong>
 
-                  </div>
-                `
-              )
-              .join("")
-          : `
-            <div class="empty">
+                          📝
 
-              <h3>
-                No quizzes available
-              </h3>
+                          ${escapeHtml(
+                            quiz.title ||
+                            "Untitled Quiz"
+                          )}
 
-              <p>
-                Your teacher hasn't created a quiz yet.
-              </p>
+                        </strong>
 
-            </div>
-          `
-      }
+
+                        <p>
+
+                          ${escapeHtml(
+                            quiz.description ||
+                            "No description"
+                          )}
+
+                        </p>
+
+
+                        <small>
+
+                          📚
+
+                          ${escapeHtml(
+                            quiz.classes?.title ||
+                            "Unknown class"
+                          )}
+
+                          &nbsp; • &nbsp;
+
+                          ⏱
+
+                          ${
+                            quiz.time_limit_minutes ||
+                            0
+                          }
+
+                          minutes
+
+                        </small>
+
+
+                        <div
+                          style="
+                            margin-top:14px;
+                            display:flex;
+                            align-items:center;
+                            gap:12px;
+                            flex-wrap:wrap;
+                          ">
+
+                          ${
+                            attempt
+                              ? `
+
+                                <span
+                                  style="
+                                    font-weight:700;
+                                  ">
+
+                                  Score:
+                                  ${Number(
+                                    attempt.score || 0
+                                  )}%
+
+                                </span>
+
+                                <span
+                                  style="
+                                    opacity:.7;
+                                  ">
+
+                                  Completed:
+
+                                  ${
+                                    attempt.completed_at
+                                      ? new Date(
+                                          attempt.completed_at
+                                        ).toLocaleDateString()
+                                      : "-"
+                                  }
+
+                                </span>
+
+                              `
+                              : `
+
+                                <span
+                                  style="
+                                    opacity:.7;
+                                  ">
+
+                                  Not attempted yet
+
+                                </span>
+
+                              `
+                          }
+
+                        </div>
+
+
+                        <br>
+
+
+                        <button
+                          class="primary-btn"
+                          onclick="startQuiz('${quiz.id}')">
+
+                          ${
+                            attempt
+                              ? "Retake Quiz"
+                              : "Start Quiz"
+                          }
+
+                        </button>
+
+                      </div>
+
+                    `;
+
+                  }
+                )
+                .join("")
+
+            : `
+
+              <div class="empty">
+
+                <h3>
+                  No quizzes available
+                </h3>
+
+                <p>
+                  Your teacher hasn't created
+                  a quiz yet.
+                </p>
+
+              </div>
+
+            `
+        }
+
+      </div>
 
     </div>
+
+
+    <!-- QUIZ HISTORY -->
+
+    <div
+      class="panel"
+      style="
+        margin-top:20px;
+      ">
+
+      <h2>
+        Quiz History
+      </h2>
+
+      <div
+        style="
+          margin-top:18px;
+        ">
+
+        ${
+          attempts &&
+          attempts.length > 0
+
+            ? attempts
+                .map(
+                  (attempt) => {
+
+                    const quiz =
+                      (quizzes || [])
+                        .find(
+                          (item) =>
+                            String(
+                              item.id
+                            ) ===
+                            String(
+                              attempt.quiz_id
+                            )
+                        );
+
+                    return `
+
+                      <div
+                        class="list-item"
+                        style="
+                          margin-bottom:12px;
+                        ">
+
+                        <strong>
+
+                          🏆
+
+                          ${escapeHtml(
+                            quiz?.title ||
+                            "Quiz"
+                          )}
+
+                        </strong>
+
+                        <p>
+
+                          Score:
+
+                          <strong>
+
+                            ${Number(
+                              attempt.score || 0
+                            )}%
+
+                          </strong>
+
+                        </p>
+
+                        <small>
+
+                          Completed:
+
+                          ${
+                            attempt.completed_at
+                              ? new Date(
+                                  attempt.completed_at
+                                ).toLocaleString()
+                              : "-"
+                          }
+
+                        </small>
+
+                      </div>
+
+                    `;
+
+                  }
+                )
+                .join("")
+
+            : `
+
+              <div class="empty">
+
+                <h3>
+                  No quiz history yet
+                </h3>
+
+                <p>
+                  Complete a quiz to see
+                  your results here.
+                </p>
+
+              </div>
+
+            `
+        }
+
+      </div>
+
+    </div>
+
   `;
 }
-
 
 /* =========================================================
    START QUIZ
