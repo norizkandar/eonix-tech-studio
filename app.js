@@ -6235,11 +6235,11 @@ async function renderPage() {
       break;
 
     case "notes":
-      renderNotes();
+      await renderNotes();
       break;
 
     case "quiz":
-      renderQuiz();
+      await renderQuiz();
       break;
 
     case "progress":
@@ -6250,24 +6250,20 @@ async function renderPage() {
       await renderChat();
       break;
 
-    case "quiz":
-      await renderQuiz();
-      break;
-
     case "notifications":
       await renderNotifications();
       break;
 
     case "earnings":
-      renderEarnings();
+      await renderEarnings();
       break;
 
     case "profile":
-      renderProfile();
+      await renderProfile();
       break;
 
     case "settings":
-      renderSettings();
+      await renderSettings();
       break;
 
     default:
