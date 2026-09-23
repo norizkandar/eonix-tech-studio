@@ -6518,169 +6518,345 @@ async function renderProgress() {
 ========================================================= */
 
 async function renderChat() {
+
   const app = $("#app");
 
   if (!app || !state.user) return;
 
+
+  /* =======================================================
+     LOAD TEACHERS
+  ======================================================= */
+
+  const {
+    data: teachers,
+    error
+  } = await supabaseClient
+    .from("profiles")
+    .select("id, full_name")
+    .eq("role", "teacher")
+    .order("full_name", {
+      ascending: true
+    });
+
+
+  if (error) {
+
+    console.error(error);
+
+    app.innerHTML = `
+      <section class="page-section">
+
+        <div class="page-header">
+
+          <div>
+
+            <div class="eyebrow">
+              MESSAGES
+            </div>
+
+            <h1>
+              Messages
+            </h1>
+
+            <p>
+              Chat with your teacher.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="card">
+
+          ${escapeHtml(error.message)}
+
+        </div>
+
+      </section>
+    `;
+
+    return;
+  }
+
+
+  /* =======================================================
+     PAGE
+  ======================================================= */
+
   app.innerHTML = `
+
     <section class="page-section">
 
       <div class="page-header">
+
         <div>
-          <div class="eyebrow">MESSAGES</div>
-          <h1>Messages</h1>
-          <p>Chat with your teacher.</p>
+
+          <div class="eyebrow">
+            MESSAGES
+          </div>
+
+          <h1>
+            Messages
+          </h1>
+
+          <p>
+            Chat with your teacher.
+          </p>
+
         </div>
+
       </div>
 
-      <div class="card" style="margin-top:20px;">
 
-        <div id="chatMessages"
+      <div
+        class="card"
+        style="
+          margin-top:20px;
+        ">
+
+
+        <label
+          style="
+            display:block;
+            margin-bottom:8px;
+            font-weight:600;
+          ">
+
+          Select Teacher
+
+        </label>
+
+
+        <select
+          id="chatTeacher"
+          style="
+            width:100%;
+            margin-bottom:20px;
+          ">
+
+          <option value="">
+            Select a teacher
+          </option>
+
+          ${
+            (teachers || [])
+              .map(
+                teacher => `
+
+                  <option
+                    value="${teacher.id}">
+
+                    ${escapeHtml(
+                      teacher.full_name ||
+                      "Teacher"
+                    )}
+
+                  </option>
+
+                `
+              )
+              .join("")
+          }
+
+        </select>
+
+
+        <div
+          id="chatMessages"
           style="
             min-height:300px;
             max-height:400px;
             overflow-y:auto;
             padding:15px 0;
           ">
-          Loading messages...
+
+          Select a teacher to start chatting.
+
         </div>
 
-        <form id="chatForm"
+
+        <form
+          id="chatForm"
           style="
             display:flex;
             gap:10px;
-            border-top:1px solid rgba(255,255,255,.08);
+            border-top:
+              1px solid
+              rgba(255,255,255,.08);
             padding-top:15px;
           ">
+
 
           <input
             id="chatInput"
             type="text"
             placeholder="Type a message..."
-            style="flex:1;"
+            style="
+              flex:1;
+            "
             autocomplete="off"
             required
+            disabled
           >
 
-          <button type="submit">
+
+          <button
+            type="submit"
+            disabled>
+
             Send
+
           </button>
+
 
         </form>
 
       </div>
 
     </section>
+
   `;
 
-  await loadChatMessages();
 
-  const form = $("#chatForm");
-  const input = $("#chatInput");
+  const teacherSelect =
+    $("#chatTeacher");
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  const input =
+    $("#chatInput");
 
-    const text = input.value.trim();
+  const form =
+    $("#chatForm");
 
-    if (!text) return;
+  const sendButton =
+    form.querySelector(
+      "button"
+    );
 
-    const { error } = await supabaseClient
-      .from("chat_messages")
-      .insert({
-        sender_id: state.user.id,
-        receiver_id: "e7ea95d5-e6f4-4f69-a5e4-73e977d45c7a",
-        message: text
-      });
 
-    if (error) {
-      console.error(error);
-      showToast(error.message);
-      return;
+  /* =======================================================
+     SELECT TEACHER
+  ======================================================= */
+
+  teacherSelect.addEventListener(
+    "change",
+    async () => {
+
+      const teacherId =
+        teacherSelect.value;
+
+
+      if (!teacherId) {
+
+        input.disabled = true;
+
+        sendButton.disabled = true;
+
+        $("#chatMessages").innerHTML = `
+          <div
+            style="
+              text-align:center;
+              opacity:.6;
+              padding:100px 20px;
+            ">
+
+            Select a teacher to start chatting.
+
+          </div>
+        `;
+
+        return;
+
+      }
+
+
+      input.disabled = false;
+
+      sendButton.disabled = false;
+
+
+      await loadChatMessages(
+        teacherId
+      );
+
     }
-
-    input.value = "";
-
-    await loadChatMessages();
-  });
-}
+  );
 
 
-async function loadChatMessages() {
-  const box = $("#chatMessages");
+  /* =======================================================
+     SEND MESSAGE
+  ======================================================= */
 
-  if (!box || !state.user) return;
+  form.addEventListener(
+    "submit",
+    async (event) => {
 
-  const teacherId =
-    "e7ea95d5-e6f4-4f69-a5e4-73e977d45c7a";
+      event.preventDefault();
 
-  const myId = state.user.id;
 
-  const { data, error } = await supabaseClient
-    .from("chat_messages")
-    .select("*")
-    .or(
-      `and(sender_id.eq.${myId},receiver_id.eq.${teacherId}),and(sender_id.eq.${teacherId},receiver_id.eq.${myId})`
-    )
-    .order("created_at", {
-      ascending: true
-    });
+      const teacherId =
+        teacherSelect.value;
 
-  if (error) {
-    console.error(error);
-    box.innerHTML = `
-      <div style="padding:40px;text-align:center;">
-        ${escapeHtml(error.message)}
-      </div>
-    `;
-    return;
-  }
 
-  if (!data || data.length === 0) {
-    box.innerHTML = `
-      <div style="
-        text-align:center;
-        opacity:.6;
-        padding:100px 20px;
-      ">
-        No messages yet 👋
-      </div>
-    `;
-    return;
-  }
+      const text =
+        input.value.trim();
 
-  box.innerHTML = data.map(item => {
 
-    const mine = item.sender_id === myId;
+      if (!teacherId) {
 
-    return `
-      <div style="
-        display:flex;
-        justify-content:${mine ? "flex-end" : "flex-start"};
-        margin-bottom:12px;
-      ">
+        showToast(
+          "Please select a teacher."
+        );
 
-        <div style="
-          max-width:75%;
-          padding:12px 16px;
-          border-radius:18px;
-          background:${
-            mine
-              ? "linear-gradient(135deg,#00d084,#00b7ff)"
-              : "rgba(255,255,255,.1)"
-          };
-        ">
+        return;
 
-          ${escapeHtml(item.message)}
+      }
 
-        </div>
 
-      </div>
-    `;
+      if (!text) return;
 
-  }).join("");
 
-  box.scrollTop = box.scrollHeight;
+      const {
+        error
+      } = await supabaseClient
+        .from("chat_messages")
+        .insert({
+
+          sender_id:
+            state.user.id,
+
+          receiver_id:
+            teacherId,
+
+          message:
+            text
+
+        });
+
+
+      if (error) {
+
+        console.error(error);
+
+        showToast(
+          error.message
+        );
+
+        return;
+
+      }
+
+
+      input.value = "";
+
+
+      await loadChatMessages(
+        teacherId
+      );
+
+    }
+  );
+
 }
 
 /* =========================================================
