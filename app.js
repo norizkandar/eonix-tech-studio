@@ -7177,12 +7177,41 @@ async function renderNotifications() {
    PROFILE PAGE
 ========================================================= */
 
-function renderProfile() {
+async function renderProfile() {
 
   const p =
     state.profile || {};
 
+  const user =
+    state.user || {};
+
+  const userId =
+    user.id;
+
+
+  /* =======================================================
+     AVATAR
+  ======================================================= */
+
+  let avatarUrl =
+    p.avatar_url || "";
+
+
+  const initials =
+    (p.full_name || "User")
+      .trim()
+      .split(/\s+/)
+      .map(
+        name =>
+          name.charAt(0)
+      )
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+
+
   $("#content").innerHTML = `
+
     <div class="page-head">
 
       <div>
@@ -7203,56 +7232,409 @@ function renderProfile() {
 
     </div>
 
-    <div class="panel">
 
-      <div class="list-item">
+    <div
+      class="panel"
+      style="
+        margin-top:20px;
+      "
+    >
+
+
+      <!-- PROFILE PHOTO -->
+
+      <div
+        style="
+          text-align:center;
+          padding:10px 0 25px;
+        "
+      >
+
+        <div
+          id="profileAvatar"
+          style="
+            width:120px;
+            height:120px;
+            margin:0 auto 15px;
+            border-radius:50%;
+            overflow:hidden;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:34px;
+            font-weight:700;
+            background:linear-gradient(
+              135deg,
+              #00d084,
+              #00b7ff
+            );
+            color:white;
+          "
+        >
+
+          ${
+            avatarUrl
+              ? `
+                <img
+                  src="${escapeHtml(avatarUrl)}"
+                  alt="Profile picture"
+                  style="
+                    width:100%;
+                    height:100%;
+                    object-fit:cover;
+                  "
+                >
+              `
+              : initials
+          }
+
+        </div>
+
+
+        <label
+          for="profileImageInput"
+          class="primary-btn"
+          style="
+            display:inline-block;
+            cursor:pointer;
+          "
+        >
+
+          📷 Change Photo
+
+        </label>
+
+
+        <input
+          id="profileImageInput"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          style="display:none;"
+        >
+
+
+        <p
+          style="
+            opacity:.55;
+            font-size:13px;
+            margin-top:10px;
+          "
+        >
+
+          JPG, PNG or WebP · Maximum 5 MB
+
+        </p>
+
+      </div>
+
+
+      <!-- ACCOUNT INFORMATION -->
+
+      <div
+        class="list-item"
+        style="
+          margin-top:10px;
+        "
+      >
 
         <strong>
-          👤
-          ${escapeHtml(
-            p.full_name ||
-            "User"
-          )}
+          👤 Full Name
         </strong>
 
         <p>
           ${escapeHtml(
-            state.user?.email ||
+            p.full_name ||
+            "User"
+          )}
+        </p>
+
+      </div>
+
+
+      <div
+        class="list-item"
+        style="
+          margin-top:12px;
+        "
+      >
+
+        <strong>
+          📧 Email
+        </strong>
+
+        <p>
+          ${escapeHtml(
+            user.email ||
             ""
           )}
         </p>
 
-        <p>
-          Role:
+      </div>
 
+
+      <div
+        class="list-item"
+        style="
+          margin-top:12px;
+        "
+      >
+
+        <strong>
+          🏷️ Role
+        </strong>
+
+        <p>
           <strong>
             ${escapeHtml(
               String(
                 p.role ||
-                state.role
+                state.role ||
+                ""
               ).toUpperCase()
             )}
           </strong>
-
         </p>
 
-        ${
-          p.phone
-            ? `
+      </div>
+
+
+      ${
+        p.phone
+          ? `
+
+            <div
+              class="list-item"
+              style="
+                margin-top:12px;
+              "
+            >
+
+              <strong>
+                📱 Phone
+              </strong>
+
               <p>
-                📱
                 ${escapeHtml(
                   p.phone
                 )}
               </p>
-            `
-            : ""
-        }
 
-      </div>
+            </div>
+
+          `
+          : ""
+      }
+
 
     </div>
+
   `;
+
+
+  /* =======================================================
+     UPLOAD PROFILE PHOTO
+  ======================================================= */
+
+  const imageInput =
+    $("#profileImageInput");
+
+
+  imageInput.addEventListener(
+    "change",
+    async () => {
+
+      const file =
+        imageInput.files?.[0];
+
+
+      if (!file) return;
+
+
+      /* FILE SIZE */
+
+      if (
+        file.size >
+        5 * 1024 * 1024
+      ) {
+
+        showToast(
+          "Image must be smaller than 5 MB."
+        );
+
+        imageInput.value = "";
+
+        return;
+      }
+
+
+      /* FILE TYPE */
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ];
+
+
+      if (
+        !allowedTypes.includes(
+          file.type
+        )
+      ) {
+
+        showToast(
+          "Please use JPG, PNG or WebP."
+        );
+
+        imageInput.value = "";
+
+        return;
+      }
+
+
+      showToast(
+        "Uploading photo..."
+      );
+
+
+      try {
+
+        const extension =
+          file.name
+            .split(".")
+            .pop()
+            .toLowerCase();
+
+
+        const filePath =
+          `${userId}/avatar.${extension}`;
+
+
+        /* UPLOAD */
+
+        const {
+          error: uploadError
+        } =
+          await supabaseClient
+            .storage
+            .from("avatars")
+            .upload(
+              filePath,
+              file,
+              {
+                upsert: true,
+                contentType:
+                  file.type
+              }
+            );
+
+
+        if (uploadError) {
+
+          console.error(
+            uploadError
+          );
+
+          showToast(
+            uploadError.message
+          );
+
+          return;
+        }
+
+
+        /* PUBLIC URL */
+
+        const {
+          data: publicData
+        } =
+          supabaseClient
+            .storage
+            .from("avatars")
+            .getPublicUrl(
+              filePath
+            );
+
+
+        const publicUrl =
+          publicData?.publicUrl;
+
+
+        if (!publicUrl) {
+
+          showToast(
+            "Could not get image URL."
+          );
+
+          return;
+        }
+
+
+        /* SAVE URL TO PROFILE */
+
+        const {
+          error: profileError
+        } =
+          await supabaseClient
+            .from("profiles")
+            .update({
+              avatar_url:
+                publicUrl
+            })
+            .eq(
+              "id",
+              userId
+            );
+
+
+        if (profileError) {
+
+          console.error(
+            profileError
+          );
+
+          showToast(
+            profileError.message
+          );
+
+          return;
+        }
+
+
+        /* UPDATE LOCAL STATE */
+
+        state.profile = {
+          ...state.profile,
+          avatar_url:
+            publicUrl
+        };
+
+
+        showToast(
+          "Profile photo updated!"
+        );
+
+
+        /* REFRESH PROFILE */
+
+        await renderProfile();
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+        showToast(
+          "Upload failed."
+        );
+
+      }
+
+    }
+  );
+
 }
 
 /* =========================================================
