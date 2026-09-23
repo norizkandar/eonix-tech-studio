@@ -5715,21 +5715,15 @@ function renderSimple(
       <div>
 
         <div class="eyebrow">
-          ${escapeHtml(
-            eyebrow
-          )}
+          ${escapeHtml(eyebrow)}
         </div>
 
         <h1>
-          ${escapeHtml(
-            title
-          )}
+          ${escapeHtml(title)}
         </h1>
 
         <p>
-          ${escapeHtml(
-            body
-          )}
+          ${escapeHtml(body)}
         </p>
 
       </div>
@@ -5755,6 +5749,25 @@ function renderSimple(
   `;
 }
 
+
+/* =========================================================
+   QUIZ
+========================================================= */
+
+async function renderQuiz() {
+
+  if (!state.user) return;
+
+  if (state.role === "teacher") {
+
+    await renderTeacherQuiz();
+
+  } else {
+
+    await renderStudentQuiz();
+
+  }
+}
 /* =========================================================
    CREATE CLASS MODAL
 ========================================================= */
