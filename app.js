@@ -1539,14 +1539,32 @@ function openAddQuizQuestionModal(
 
         </select>
 
-        <button
-          class="primary-btn"
-          type="submit"
-          style="margin-top:20px;">
+        <div
+          style="
+            display:flex;
+            gap:10px;
+            margin-top:20px;
+            flex-wrap:wrap;
+          ">
 
-          Save Question
+          <button
+            class="primary-btn"
+            type="submit">
 
-        </button>
+            Save & Add Another
+
+          </button>
+
+          <button
+            type="button"
+            class="secondary-btn"
+            onclick="finishAddingQuizQuestions('${quizId}')">
+
+            Done
+
+          </button>
+
+        </div>
 
       </form>
 
@@ -1591,6 +1609,21 @@ function openAddQuizQuestionModal(
         $("#correctAnswer")
           .value;
 
+      if (
+        !question ||
+        !optionA ||
+        !optionB ||
+        !optionC ||
+        !optionD
+      ) {
+
+        showToast(
+          "Please fill in all fields."
+        );
+
+        return;
+      }
+
       const { error } =
         await supabaseClient
           .from("quiz_questions")
@@ -1606,21 +1639,47 @@ function openAddQuizQuestionModal(
           });
 
       if (error) {
+
         console.error(error);
-        showToast(error.message);
+
+        showToast(
+          error.message
+        );
+
         return;
       }
-
-      closeModal();
 
       showToast(
         "Question added successfully!"
       );
 
-      await renderQuiz();
+      /*
+       * Open a fresh form for the next question.
+       */
+      openAddQuizQuestionModal(
+        quizId
+      );
 
     }
   );
+}
+
+
+/* =========================================================
+   FINISH ADDING QUESTIONS
+========================================================= */
+
+async function finishAddingQuizQuestions(
+  quizId
+) {
+
+  closeModal();
+
+  showToast(
+    "Quiz questions saved successfully!"
+  );
+
+  await renderQuiz();
 }
 
 
