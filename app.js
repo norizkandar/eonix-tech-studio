@@ -6567,9 +6567,12 @@ async function renderChat() {
 
         </div>
 
-        <div class="card">
+        <div class="card"
+          style="margin-top:20px;">
 
-          ${escapeHtml(error.message)}
+          ${escapeHtml(
+            error.message
+          )}
 
         </div>
 
@@ -6581,7 +6584,7 @@ async function renderChat() {
 
 
   /* =======================================================
-     PAGE
+     CHAT PAGE
   ======================================================= */
 
   app.innerHTML = `
@@ -6615,6 +6618,8 @@ async function renderChat() {
           margin-top:20px;
         ">
 
+
+        <!-- SELECT TEACHER -->
 
         <label
           style="
@@ -6662,6 +6667,8 @@ async function renderChat() {
         </select>
 
 
+        <!-- MESSAGES -->
+
         <div
           id="chatMessages"
           style="
@@ -6671,10 +6678,21 @@ async function renderChat() {
             padding:15px 0;
           ">
 
-          Select a teacher to start chatting.
+          <div
+            style="
+              text-align:center;
+              opacity:.6;
+              padding:100px 20px;
+            ">
+
+            Select a teacher to start chatting.
+
+          </div>
 
         </div>
 
+
+        <!-- SEND MESSAGE -->
 
         <form
           id="chatForm"
@@ -6718,6 +6736,10 @@ async function renderChat() {
 
   `;
 
+
+  /* =======================================================
+     ELEMENTS
+  ======================================================= */
 
   const teacherSelect =
     $("#chatTeacher");
@@ -6766,7 +6788,6 @@ async function renderChat() {
         `;
 
         return;
-
       }
 
 
@@ -6809,11 +6830,13 @@ async function renderChat() {
         );
 
         return;
-
       }
 
 
       if (!text) return;
+
+
+      sendButton.disabled = true;
 
 
       const {
@@ -6842,8 +6865,9 @@ async function renderChat() {
           error.message
         );
 
-        return;
+        sendButton.disabled = false;
 
+        return;
       }
 
 
@@ -6854,8 +6878,165 @@ async function renderChat() {
         teacherId
       );
 
+
+      sendButton.disabled = false;
+
+      input.focus();
+
     }
   );
+
+}
+
+
+/* =========================================================
+   LOAD CHAT MESSAGES
+========================================================= */
+
+async function loadChatMessages(
+  teacherId
+) {
+
+  const box =
+    $("#chatMessages");
+
+
+  if (
+    !box ||
+    !state.user ||
+    !teacherId
+  ) {
+
+    return;
+
+  }
+
+
+  const myId =
+    state.user.id;
+
+
+  const {
+    data,
+    error
+  } = await supabaseClient
+    .from("chat_messages")
+    .select("*")
+    .or(
+      `and(sender_id.eq.${myId},receiver_id.eq.${teacherId}),and(sender_id.eq.${teacherId},receiver_id.eq.${myId})`
+    )
+    .order(
+      "created_at",
+      {
+        ascending: true
+      }
+    );
+
+
+  if (error) {
+
+    console.error(error);
+
+    box.innerHTML = `
+      <div
+        style="
+          padding:40px;
+          text-align:center;
+        ">
+
+        ${escapeHtml(
+          error.message
+        )}
+
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  if (
+    !data ||
+    data.length === 0
+  ) {
+
+    box.innerHTML = `
+      <div
+        style="
+          text-align:center;
+          opacity:.6;
+          padding:100px 20px;
+        ">
+
+        No messages yet 👋
+
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  box.innerHTML =
+    data
+      .map(
+        item => {
+
+          const mine =
+            item.sender_id ===
+            myId;
+
+
+          return `
+
+            <div
+              style="
+                display:flex;
+                justify-content:
+                  ${
+                    mine
+                      ? "flex-end"
+                      : "flex-start"
+                  };
+                margin-bottom:12px;
+              ">
+
+
+              <div
+                style="
+                  max-width:75%;
+                  padding:12px 16px;
+                  border-radius:18px;
+
+                  background:
+                    ${
+                      mine
+                        ? "linear-gradient(135deg,#00d084,#00b7ff)"
+                        : "rgba(255,255,255,.1)"
+                    };
+
+                  color:#fff;
+                ">
+
+                ${escapeHtml(
+                  item.message
+                )}
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+      )
+      .join("");
+
+
+  box.scrollTop =
+    box.scrollHeight;
 
 }
 
