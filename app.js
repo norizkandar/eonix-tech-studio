@@ -6237,6 +6237,10 @@ async function renderPage() {
       await renderChat();
       break;
 
+    case "quiz":
+      await renderQuiz();
+      break;
+
     case "notifications":
       await renderNotifications();
       break;
