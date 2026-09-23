@@ -914,6 +914,7 @@ async function renderQuiz() {
 ========================================================= */
 
 async function renderTeacherQuiz() {
+
   const { data: classes, error } =
     await supabaseClient
       .from("classes")
@@ -931,7 +932,9 @@ async function renderTeacherQuiz() {
 
   $("#content").innerHTML = `
     <div class="page-head">
+
       <div>
+
         <div class="eyebrow">
           QUIZ
         </div>
@@ -943,6 +946,7 @@ async function renderTeacherQuiz() {
         <p>
           Create quizzes for your students.
         </p>
+
       </div>
 
       <button
@@ -952,6 +956,7 @@ async function renderTeacherQuiz() {
         + Create Quiz
 
       </button>
+
     </div>
 
     <div class="panel">
@@ -971,8 +976,14 @@ async function renderTeacherQuiz() {
 }
 
 
+/* =========================================================
+   LOAD TEACHER QUIZZES
+========================================================= */
+
 async function loadTeacherQuizzes() {
-  const box = $("#teacherQuizList");
+
+  const box =
+    $("#teacherQuizList");
 
   if (!box) return;
 
@@ -994,18 +1005,27 @@ async function loadTeacherQuizzes() {
       });
 
   if (error) {
+
     console.error(error);
 
     box.innerHTML = `
       <div class="empty">
-        ${escapeHtml(error.message)}
+
+        ${escapeHtml(
+          error.message
+        )}
+
       </div>
     `;
 
     return;
   }
 
-  if (!data || data.length === 0) {
+  if (
+    !data ||
+    data.length === 0
+  ) {
+
     box.innerHTML = `
       <div class="empty">
 
@@ -1014,7 +1034,8 @@ async function loadTeacherQuizzes() {
         </h3>
 
         <p>
-          Create your first quiz for your students.
+          Create your first quiz
+          for your students.
         </p>
 
       </div>
@@ -1026,40 +1047,231 @@ async function loadTeacherQuizzes() {
   box.innerHTML = data
     .map(
       (quiz) => `
-        <div class="list-item">
+
+        <div
+          class="list-item"
+          style="margin-bottom:16px;">
 
           <strong>
+
             📝
+
             ${escapeHtml(
               quiz.title ||
               "Untitled Quiz"
             )}
+
           </strong>
 
           <p>
+
             ${escapeHtml(
               quiz.description ||
               "No description"
             )}
+
           </p>
 
           <small>
+
             Class:
+
             ${escapeHtml(
               quiz.classes?.title ||
               "Unknown class"
             )}
+
             •
+
             ${quiz.time_limit_minutes || 0}
             minutes
+
           </small>
 
+          <div
+            style="
+              margin-top:16px;
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            ">
+
+            <button
+              class="primary-btn"
+              onclick="viewQuizResults(
+                '${quiz.id}',
+                '${escapeHtml(
+                  quiz.title ||
+                  "Untitled Quiz"
+                ).replace(
+                  /'/g,
+                  "\\'"
+                )}'
+              )">
+
+              View Results
+
+            </button>
+
+          </div>
+
         </div>
+
       `
     )
     .join("");
 }
 
+
+/* =========================================================
+   TEACHER QUIZ RESULTS
+========================================================= */
+
+async function viewQuizResults(
+  quizId,
+  quizTitle
+) {
+
+  const { data, error } =
+    await supabaseClient
+      .from("quiz_attempts")
+      .select(`
+        id,
+        score,
+        started_at,
+        completed_at,
+        profiles:student_id (
+          full_name
+        )
+      `)
+      .eq("quiz_id", quizId)
+      .order("score", {
+        ascending: false
+      });
+
+  if (error) {
+
+    console.error(error);
+
+    showToast(
+      error.message
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="modal-card">
+
+      <h2>
+        Quiz Results
+      </h2>
+
+      <p
+        style="
+          margin-bottom:20px;
+        ">
+
+        ${escapeHtml(
+          quizTitle ||
+          "Quiz"
+        )}
+
+      </p>
+
+      ${
+        data &&
+        data.length > 0
+
+          ? `
+
+            <div>
+
+              ${data
+                .map(
+                  (
+                    attempt,
+                    index
+                  ) => `
+
+                    <div
+                      class="list-item"
+                      style="
+                        margin-bottom:12px;
+                      ">
+
+                      <strong>
+
+                        ${index + 1}.
+
+                        ${escapeHtml(
+                          attempt
+                            .profiles
+                            ?.full_name ||
+                          "Student"
+                        )}
+
+                      </strong>
+
+                      <p>
+
+                        Score:
+
+                        <strong>
+
+                          ${Number(
+                            attempt.score || 0
+                          )}%
+
+                        </strong>
+
+                      </p>
+
+                      <small>
+
+                        Completed:
+
+                        ${
+                          attempt.completed_at
+                            ? new Date(
+                                attempt.completed_at
+                              ).toLocaleString()
+                            : "-"
+                        }
+
+                      </small>
+
+                    </div>
+
+                  `
+                )
+                .join("")}
+
+            </div>
+
+          `
+
+          : `
+
+            <div class="empty">
+
+              <h3>
+                No attempts yet
+              </h3>
+
+              <p>
+                No student has completed
+                this quiz.
+              </p>
+
+            </div>
+
+          `
+      }
+
+    </div>
+  `);
+}
 
 /* =========================================================
    CREATE QUIZ MODAL
