@@ -7261,11 +7261,417 @@ function renderProfile() {
 
 function renderSettings() {
 
-  renderSimple(
-    "Settings",
-    "SETTINGS",
-    "Privacy, security, support and account controls."
+  const app = $("#content");
+
+  if (!app || !state.user) return;
+
+
+  const profile =
+    state.profile || {};
+
+  const name =
+    profile.full_name ||
+    state.user.email?.split("@")[0] ||
+    "User";
+
+  const email =
+    state.user.email ||
+    "No email";
+
+
+  const role =
+    state.role || "student";
+
+
+  app.innerHTML = `
+
+    <section class="page-section">
+
+
+      <!-- HEADER -->
+
+      <div class="page-header">
+
+        <div>
+
+          <div class="eyebrow">
+            SETTINGS
+          </div>
+
+          <h1>
+            Settings
+          </h1>
+
+          <p>
+            Manage your account and preferences.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <!-- ACCOUNT -->
+
+      <div
+        class="card"
+        style="margin-top:20px;"
+      >
+
+        <h3>
+          Account
+        </h3>
+
+        <p
+          style="
+            opacity:.65;
+            margin-bottom:20px;
+          "
+        >
+          Your Smart Academy account information.
+        </p>
+
+
+        <div
+          style="
+            display:grid;
+            gap:15px;
+          "
+        >
+
+          <div>
+
+            <small
+              style="opacity:.6;"
+            >
+              Full Name
+            </small>
+
+            <div
+              style="
+                margin-top:5px;
+                font-weight:600;
+              "
+            >
+              ${escapeHtml(name)}
+            </div>
+
+          </div>
+
+
+          <div>
+
+            <small
+              style="opacity:.6;"
+            >
+              Email
+            </small>
+
+            <div
+              style="
+                margin-top:5px;
+                font-weight:600;
+              "
+            >
+              ${escapeHtml(email)}
+            </div>
+
+          </div>
+
+
+          <div>
+
+            <small
+              style="opacity:.6;"
+            >
+              Account Type
+            </small>
+
+            <div
+              style="
+                margin-top:5px;
+                font-weight:600;
+                text-transform:capitalize;
+              "
+            >
+              ${escapeHtml(role)}
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- APPEARANCE -->
+
+      <div
+        class="card"
+        style="margin-top:20px;"
+      >
+
+        <h3>
+          Appearance
+        </h3>
+
+        <p
+          style="
+            opacity:.65;
+            margin-bottom:20px;
+          "
+        >
+          Customize how Smart Academy looks.
+        </p>
+
+
+        <div
+          style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:20px;
+          "
+        >
+
+          <div>
+
+            <strong>
+              Dark Mode
+            </strong>
+
+            <div
+              style="
+                opacity:.6;
+                margin-top:4px;
+              "
+            >
+              Use the dark interface.
+            </div>
+
+          </div>
+
+
+          <button
+            id="themeToggle"
+            type="button"
+            class="primary-btn"
+          >
+            Toggle Theme
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- SECURITY -->
+
+      <div
+        class="card"
+        style="margin-top:20px;"
+      >
+
+        <h3>
+          Security
+        </h3>
+
+        <p
+          style="
+            opacity:.65;
+            margin-bottom:20px;
+          "
+        >
+          Manage your account security.
+        </p>
+
+
+        <button
+          id="changePasswordBtn"
+          type="button"
+          class="primary-btn"
+        >
+          Change Password
+        </button>
+
+      </div>
+
+
+      <!-- ACCOUNT ACTIONS -->
+
+      <div
+        class="card"
+        style="margin-top:20px;"
+      >
+
+        <h3>
+          Account Actions
+        </h3>
+
+        <p
+          style="
+            opacity:.65;
+            margin-bottom:20px;
+          "
+        >
+          Sign out from your Smart Academy account.
+        </p>
+
+
+        <button
+          id="settingsLogout"
+          type="button"
+          class="primary-btn"
+        >
+          Log Out
+        </button>
+
+      </div>
+
+
+    </section>
+
+  `;
+
+
+  /* =======================================================
+     THEME
+  ======================================================= */
+
+  const themeToggle =
+    $("#themeToggle");
+
+
+  themeToggle.addEventListener(
+    "click",
+    () => {
+
+      document.body.classList.toggle(
+        "light-mode"
+      );
+
+
+      const light =
+        document.body.classList.contains(
+          "light-mode"
+        );
+
+
+      localStorage.setItem(
+        "smart_theme",
+        light
+          ? "light"
+          : "dark"
+      );
+
+    }
   );
+
+
+  /* =======================================================
+     CHANGE PASSWORD
+  ======================================================= */
+
+  const changePasswordBtn =
+    $("#changePasswordBtn");
+
+
+  changePasswordBtn.addEventListener(
+    "click",
+    async () => {
+
+      const newPassword =
+        prompt(
+          "Enter your new password:"
+        );
+
+
+      if (!newPassword) return;
+
+
+      if (newPassword.length < 6) {
+
+        showToast(
+          "Password must be at least 6 characters."
+        );
+
+        return;
+
+      }
+
+
+      const {
+        error
+      } = await supabaseClient.auth.updateUser({
+        password: newPassword
+      });
+
+
+      if (error) {
+
+        console.error(error);
+
+        showToast(
+          error.message
+        );
+
+        return;
+
+      }
+
+
+      showToast(
+        "Password updated successfully."
+      );
+
+    }
+  );
+
+
+  /* =======================================================
+     LOG OUT
+  ======================================================= */
+
+  const logoutButton =
+    $("#settingsLogout");
+
+
+  logoutButton.addEventListener(
+    "click",
+    async () => {
+
+      const {
+        error
+      } =
+        await supabaseClient.auth.signOut();
+
+
+      if (error) {
+
+        console.error(error);
+
+        showToast(
+          error.message
+        );
+
+        return;
+
+      }
+
+
+      localStorage.removeItem(
+        "st_user"
+      );
+
+      localStorage.removeItem(
+        "st_role"
+      );
+
+      location.reload();
+
+    }
+  );
+
 }
 
 /* =========================================================
