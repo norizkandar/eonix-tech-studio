@@ -1779,18 +1779,29 @@ async function startQuiz(
       });
 
   if (questionError) {
-    showToast(
-      questionError.message
-    );
+    showToast(questionError.message);
     return;
   }
 
-  if (!questions || questions.length === 0) {
+  if (
+    !questions ||
+    questions.length === 0
+  ) {
     showToast(
       "This quiz has no questions yet."
     );
     return;
   }
+
+  const timeLimit =
+    Number(
+      quiz.time_limit_minutes || 30
+    );
+
+  let timeLeft =
+    timeLimit * 60;
+
+  let submitted = false;
 
   $("#content").innerHTML = `
     <div class="page-head">
@@ -1809,10 +1820,42 @@ async function startQuiz(
 
         <p>
           ${escapeHtml(
-            quiz.description ||
-            ""
+            quiz.description || ""
           )}
         </p>
+
+      </div>
+
+      <div
+        class="panel"
+        style="
+          margin-top:16px;
+          text-align:center;
+        ">
+
+        <div
+          style="
+            font-size:14px;
+            opacity:.7;
+          ">
+
+          TIME REMAINING
+
+        </div>
+
+        <div
+          id="quizTimer"
+          style="
+            font-size:28px;
+            font-weight:800;
+            margin-top:4px;
+          ">
+
+          ${formatQuizTime(
+            timeLeft
+          )}
+
+        </div>
 
       </div>
 
@@ -1825,22 +1868,36 @@ async function startQuiz(
         ${questions
           .map(
             (q, index) => `
+
               <div
                 class="list-item"
-                style="margin-bottom:18px;">
+                style="
+                  margin-bottom:18px;
+                ">
 
                 <strong>
+
                   ${index + 1}.
                   ${escapeHtml(
                     q.question
                   )}
+
                 </strong>
 
-                <div style="margin-top:14px;">
+                <div
+                  style="
+                    margin-top:14px;
+                  ">
 
-                  ${["a", "b", "c", "d"]
+                  ${[
+                    "a",
+                    "b",
+                    "c",
+                    "d"
+                  ]
                     .map(
                       (letter) => `
+
                         <label
                           style="
                             display:block;
@@ -1856,12 +1913,15 @@ async function startQuiz(
                           >
 
                           ${letter.toUpperCase()}.
+
                           ${escapeHtml(
                             q[
                               `option_${letter}`
                             ]
                           )}
+
                         </label>
+
                       `
                     )
                     .join("")}
@@ -1869,6 +1929,7 @@ async function startQuiz(
                 </div>
 
               </div>
+
             `
           )
           .join("")}
@@ -1889,99 +1950,202 @@ async function startQuiz(
   const form =
     $("#studentQuizForm");
 
+  async function submitQuiz() {
+
+    if (submitted) return;
+
+    submitted = true;
+
+    let correct = 0;
+
+    questions.forEach(
+      (q) => {
+
+        const answer =
+          document.querySelector(
+            `input[name="q_${q.id}"]:checked`
+          )?.value;
+
+        if (
+          answer &&
+          answer.toUpperCase() ===
+            String(
+              q.correct_answer
+            ).toUpperCase()
+        ) {
+
+          correct++;
+
+        }
+
+      }
+    );
+
+    const score =
+      Number(
+        (
+          (correct /
+            questions.length) *
+          100
+        ).toFixed(2)
+      );
+
+    const { error } =
+      await supabaseClient
+        .from("quiz_attempts")
+        .insert({
+          quiz_id: quizId,
+          student_id: state.user.id,
+          score,
+          started_at:
+            new Date(
+              Date.now() -
+              (
+                (timeLimit * 60 -
+                  timeLeft) *
+                1000
+              )
+            ).toISOString(),
+          completed_at:
+            new Date().toISOString()
+        });
+
+    if (error) {
+
+      console.error(error);
+
+      submitted = false;
+
+      showToast(
+        error.message
+      );
+
+      return;
+    }
+
+    clearInterval(
+      quizTimerInterval
+    );
+
+    $("#content").innerHTML = `
+
+      <div class="panel">
+
+        <div class="empty">
+
+          <h2>
+            Quiz Completed 🎉
+          </h2>
+
+          <p>
+            Your score:
+            <strong>
+              ${score}%
+            </strong>
+          </p>
+
+          <p>
+            ${correct}
+            / ${questions.length}
+            correct
+          </p>
+
+          <button
+            class="primary-btn"
+            onclick="renderQuiz()">
+
+            Back to Quiz
+
+          </button>
+
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
   form.addEventListener(
     "submit",
     async (event) => {
 
       event.preventDefault();
 
-      let correct = 0;
-
-      questions.forEach(
-        (q) => {
-
-          const answer =
-            document.querySelector(
-              `input[name="q_${q.id}"]:checked`
-            )?.value;
-
-          if (
-            answer &&
-            answer.toUpperCase() ===
-              String(
-                q.correct_answer
-              ).toUpperCase()
-          ) {
-            correct++;
-          }
-
-        }
-      );
-
-      const score =
-        Number(
-          (
-            (correct /
-              questions.length) *
-            100
-          ).toFixed(2)
-        );
-
-      const { error } =
-        await supabaseClient
-          .from("quiz_attempts")
-          .insert({
-            quiz_id: quizId,
-            student_id: state.user.id,
-            score,
-            started_at:
-              new Date().toISOString(),
-            completed_at:
-              new Date().toISOString()
-          });
-
-      if (error) {
-        console.error(error);
-        showToast(error.message);
-        return;
-      }
-
-      $("#content").innerHTML = `
-        <div class="panel">
-
-          <div class="empty">
-
-            <h2>
-              Quiz Completed 🎉
-            </h2>
-
-            <p>
-              Your score:
-              <strong>
-                ${score}%
-              </strong>
-            </p>
-
-            <p>
-              ${correct}
-              / ${questions.length}
-              correct
-            </p>
-
-            <button
-              class="primary-btn"
-              onclick="renderQuiz()">
-
-              Back to Quiz
-
-            </button>
-
-          </div>
-
-        </div>
-      `;
+      await submitQuiz();
 
     }
+  );
+
+  window.quizTimerInterval =
+    setInterval(
+      async () => {
+
+        timeLeft--;
+
+        const timer =
+          $("#quizTimer");
+
+        if (timer) {
+
+          timer.textContent =
+            formatQuizTime(
+              timeLeft
+            );
+
+        }
+
+        if (
+          timeLeft <= 0
+        ) {
+
+          clearInterval(
+            quizTimerInterval
+          );
+
+          showToast(
+            "Time is up! Quiz submitted automatically."
+          );
+
+          await submitQuiz();
+
+        }
+
+      },
+      1000
+    );
+}
+
+
+/* =========================================================
+   QUIZ TIMER FORMAT
+========================================================= */
+
+function formatQuizTime(
+  seconds
+) {
+
+  const safeSeconds =
+    Math.max(
+      0,
+      Number(seconds) || 0
+    );
+
+  const minutes =
+    Math.floor(
+      safeSeconds / 60
+    );
+
+  const remainingSeconds =
+    safeSeconds % 60;
+
+  return (
+    String(minutes)
+      .padStart(2, "0") +
+    ":" +
+    String(
+      remainingSeconds
+    ).padStart(2, "0")
   );
 }
 
