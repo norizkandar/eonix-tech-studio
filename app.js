@@ -6525,28 +6525,94 @@ async function renderChat() {
 
 
   /* =======================================================
-   LOAD CHAT USERS
-======================================================= */
+     LOAD CHAT USERS
+  ======================================================= */
 
-const targetRole =
-  state.role === "teacher"
-    ? "student"
-    : "teacher";
+  const targetRole =
+    state.role === "teacher"
+      ? "student"
+      : "teacher";
 
-const {
-  data: chatUsers,
-  error
-} = await supabaseClient
-  .from("profiles")
-  .select("id, full_name, role")
-  .eq("role", targetRole)
-  .order("full_name", {
-    ascending: true
-  });
 
-console.log("CHAT USERS:", chatUsers);
-console.log("CHAT USER ERROR:", error);
-  
+  const {
+    data: chatUsers,
+    error
+  } = await supabaseClient
+    .from("profiles")
+    .select("id, full_name, role")
+    .eq("role", targetRole)
+    .order("full_name", {
+      ascending: true
+    });
+
+
+  if (error) {
+
+    console.error(error);
+
+    app.innerHTML = `
+      <section class="page-section">
+
+        <div class="page-header">
+
+          <div>
+
+            <div class="eyebrow">
+              MESSAGES
+            </div>
+
+            <h1>
+              Messages
+            </h1>
+
+            <p>
+              Chat with ${
+                state.role === "teacher"
+                  ? "your students."
+                  : "your teacher."
+              }
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div
+          class="card"
+          style="
+            margin-top:20px;
+            padding:30px;
+          "
+        >
+
+          ${escapeHtml(error.message)}
+
+        </div>
+
+      </section>
+    `;
+
+    return;
+  }
+
+
+  /* =======================================================
+     LABELS
+  ======================================================= */
+
+  const userLabel =
+    state.role === "teacher"
+      ? "Select Student"
+      : "Select Teacher";
+
+
+  const emptyText =
+    state.role === "teacher"
+      ? "Select a student to start chatting."
+      : "Select a teacher to start chatting.";
+
+
   /* =======================================================
      CHAT PAGE
   ======================================================= */
@@ -6554,6 +6620,7 @@ console.log("CHAT USER ERROR:", error);
   app.innerHTML = `
 
     <section class="page-section">
+
 
       <div class="page-header">
 
@@ -6568,7 +6635,11 @@ console.log("CHAT USER ERROR:", error);
           </h1>
 
           <p>
-            Chat with your teacher.
+            Chat with ${
+              state.role === "teacher"
+                ? "your students."
+                : "your teacher."
+            }
           </p>
 
         </div>
@@ -6580,45 +6651,54 @@ console.log("CHAT USER ERROR:", error);
         class="card"
         style="
           margin-top:20px;
-        ">
+        "
+      >
 
 
-        <!-- SELECT TEACHER -->
+        <!-- SELECT USER -->
 
         <label
           style="
             display:block;
             margin-bottom:8px;
             font-weight:600;
-          ">
+          "
+        >
 
-          Select Teacher
+          ${userLabel}
 
         </label>
 
 
         <select
-          id="chatTeacher"
+          id="chatUser"
           style="
             width:100%;
             margin-bottom:20px;
-          ">
+          "
+        >
 
           <option value="">
-            Select a teacher
+            ${userLabel}
           </option>
 
+
           ${
-            (teachers || [])
+            (chatUsers || [])
               .map(
-                teacher => `
+                user => `
 
                   <option
-                    value="${teacher.id}">
+                    value="${user.id}"
+                  >
 
                     ${escapeHtml(
-                      teacher.full_name ||
-                      "Teacher"
+                      user.full_name ||
+                      (
+                        state.role === "teacher"
+                          ? "Student"
+                          : "Teacher"
+                      )
                     )}
 
                   </option>
@@ -6640,16 +6720,18 @@ console.log("CHAT USER ERROR:", error);
             max-height:400px;
             overflow-y:auto;
             padding:15px 0;
-          ">
+          "
+        >
 
           <div
             style="
               text-align:center;
               opacity:.6;
               padding:100px 20px;
-            ">
+            "
+          >
 
-            Select a teacher to start chatting.
+            ${emptyText}
 
           </div>
 
@@ -6663,20 +6745,16 @@ console.log("CHAT USER ERROR:", error);
           style="
             display:flex;
             gap:10px;
-            border-top:
-              1px solid
-              rgba(255,255,255,.08);
+            border-top:1px solid rgba(255,255,255,.08);
             padding-top:15px;
-          ">
-
+          "
+        >
 
           <input
             id="chatInput"
             type="text"
             placeholder="Type a message..."
-            style="
-              flex:1;
-            "
+            style="flex:1;"
             autocomplete="off"
             required
             disabled
@@ -6685,7 +6763,8 @@ console.log("CHAT USER ERROR:", error);
 
           <button
             type="submit"
-            disabled>
+            disabled
+          >
 
             Send
 
@@ -6694,7 +6773,9 @@ console.log("CHAT USER ERROR:", error);
 
         </form>
 
+
       </div>
+
 
     </section>
 
@@ -6705,8 +6786,8 @@ console.log("CHAT USER ERROR:", error);
      ELEMENTS
   ======================================================= */
 
-  const teacherSelect =
-    $("#chatTeacher");
+  const userSelect =
+    $("#chatUser");
 
   const input =
     $("#chatInput");
@@ -6715,40 +6796,41 @@ console.log("CHAT USER ERROR:", error);
     $("#chatForm");
 
   const sendButton =
-    form.querySelector(
-      "button"
-    );
+    form.querySelector("button");
 
 
   /* =======================================================
-     SELECT TEACHER
+     SELECT USER
   ======================================================= */
 
-  teacherSelect.addEventListener(
+  userSelect.addEventListener(
     "change",
     async () => {
 
-      const teacherId =
-        teacherSelect.value;
+      const userId =
+        userSelect.value;
 
 
-      if (!teacherId) {
+      if (!userId) {
 
         input.disabled = true;
 
         sendButton.disabled = true;
 
         $("#chatMessages").innerHTML = `
+
           <div
             style="
               text-align:center;
               opacity:.6;
               padding:100px 20px;
-            ">
+            "
+          >
 
-            Select a teacher to start chatting.
+            ${emptyText}
 
           </div>
+
         `;
 
         return;
@@ -6761,7 +6843,7 @@ console.log("CHAT USER ERROR:", error);
 
 
       await loadChatMessages(
-        teacherId
+        userId
       );
 
     }
@@ -6779,18 +6861,20 @@ console.log("CHAT USER ERROR:", error);
       event.preventDefault();
 
 
-      const teacherId =
-        teacherSelect.value;
+      const userId =
+        userSelect.value;
 
 
       const text =
         input.value.trim();
 
 
-      if (!teacherId) {
+      if (!userId) {
 
         showToast(
-          "Please select a teacher."
+          state.role === "teacher"
+            ? "Please select a student."
+            : "Please select a teacher."
         );
 
         return;
@@ -6813,7 +6897,7 @@ console.log("CHAT USER ERROR:", error);
             state.user.id,
 
           receiver_id:
-            teacherId,
+            userId,
 
           message:
             text
@@ -6839,7 +6923,7 @@ console.log("CHAT USER ERROR:", error);
 
 
       await loadChatMessages(
-        teacherId
+        userId
       );
 
 
@@ -6858,7 +6942,7 @@ console.log("CHAT USER ERROR:", error);
 ========================================================= */
 
 async function loadChatMessages(
-  teacherId
+  userId
 ) {
 
   const box =
@@ -6868,7 +6952,7 @@ async function loadChatMessages(
   if (
     !box ||
     !state.user ||
-    !teacherId
+    !userId
   ) {
 
     return;
@@ -6887,7 +6971,7 @@ async function loadChatMessages(
     .from("chat_messages")
     .select("*")
     .or(
-      `and(sender_id.eq.${myId},receiver_id.eq.${teacherId}),and(sender_id.eq.${teacherId},receiver_id.eq.${myId})`
+      `and(sender_id.eq.${myId},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${myId})`
     )
     .order(
       "created_at",
@@ -6902,21 +6986,21 @@ async function loadChatMessages(
     console.error(error);
 
     box.innerHTML = `
+
       <div
         style="
           padding:40px;
           text-align:center;
-        ">
+        "
+      >
 
-        ${escapeHtml(
-          error.message
-        )}
+        ${escapeHtml(error.message)}
 
       </div>
+
     `;
 
     return;
-
   }
 
 
@@ -6926,20 +7010,22 @@ async function loadChatMessages(
   ) {
 
     box.innerHTML = `
+
       <div
         style="
           text-align:center;
           opacity:.6;
           padding:100px 20px;
-        ">
+        "
+      >
 
         No messages yet 👋
 
       </div>
+
     `;
 
     return;
-
   }
 
 
@@ -6949,8 +7035,7 @@ async function loadChatMessages(
         item => {
 
           const mine =
-            item.sender_id ===
-            myId;
+            item.sender_id === myId;
 
 
           return `
@@ -6965,24 +7050,23 @@ async function loadChatMessages(
                       : "flex-start"
                   };
                 margin-bottom:12px;
-              ">
-
+              "
+            >
 
               <div
                 style="
                   max-width:75%;
                   padding:12px 16px;
                   border-radius:18px;
-
                   background:
                     ${
                       mine
                         ? "linear-gradient(135deg,#00d084,#00b7ff)"
                         : "rgba(255,255,255,.1)"
                     };
-
                   color:#fff;
-                ">
+                "
+              >
 
                 ${escapeHtml(
                   item.message
