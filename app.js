@@ -7179,36 +7179,25 @@ async function renderNotifications() {
 
 async function renderProfile() {
 
-  const p =
-    state.profile || {};
+  const p = state.profile || {};
+  const user = state.user || {};
+  const userId = user.id;
 
-  const user =
-    state.user || {};
-
-  const userId =
-    user.id;
-
-
-  /* =======================================================
-     AVATAR
-  ======================================================= */
-
-  let avatarUrl =
-    p.avatar_url || "";
-
+  const avatarUrl = p.avatar_url || "";
 
   const initials =
     (p.full_name || "User")
       .trim()
       .split(/\s+/)
-      .map(
-        name =>
-          name.charAt(0)
-      )
+      .map(name => name.charAt(0))
       .slice(0, 2)
       .join("")
       .toUpperCase();
 
+
+  /* =======================================================
+     PROFILE UI
+  ======================================================= */
 
   $("#content").innerHTML = `
 
@@ -7233,42 +7222,32 @@ async function renderProfile() {
     </div>
 
 
-    <div
-      class="panel"
-      style="
-        margin-top:20px;
-      "
-    >
-
-
-      <!-- PROFILE PHOTO -->
+    <div class="panel profile-card">
 
       <div
         style="
+          display:flex;
+          flex-direction:column;
+          align-items:center;
           text-align:center;
-          padding:10px 0 25px;
+          padding:20px;
         "
       >
 
         <div
-          id="profileAvatar"
           style="
             width:120px;
             height:120px;
-            margin:0 auto 15px;
             border-radius:50%;
             overflow:hidden;
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:34px;
-            font-weight:700;
-            background:linear-gradient(
-              135deg,
-              #00d084,
-              #00b7ff
-            );
+            font-size:36px;
+            font-weight:800;
+            background:linear-gradient(135deg,#10b981,#06b6d4);
             color:white;
+            margin-bottom:15px;
           "
         >
 
@@ -7277,7 +7256,7 @@ async function renderProfile() {
               ? `
                 <img
                   src="${escapeHtml(avatarUrl)}"
-                  alt="Profile picture"
+                  alt="Profile photo"
                   style="
                     width:100%;
                     height:100%;
@@ -7285,57 +7264,49 @@ async function renderProfile() {
                   "
                 >
               `
-              : initials
+              : `
+                ${escapeHtml(initials || "U")}
+              `
           }
 
         </div>
 
 
-        <label
-          for="profileImageInput"
+        <h2>
+          ${escapeHtml(
+            p.full_name || "User"
+          )}
+        </h2>
+
+
+        <p>
+          ${escapeHtml(
+            user.email || ""
+          )}
+        </p>
+
+
+        <button
+          id="changeProfilePhoto"
           class="primary-btn"
-          style="
-            display:inline-block;
-            cursor:pointer;
-          "
+          type="button"
+          style="margin-top:10px;"
         >
-
           📷 Change Photo
-
-        </label>
+        </button>
 
 
         <input
           id="profileImageInput"
           type="file"
           accept="image/jpeg,image/png,image/webp"
-          style="display:none;"
+          hidden
         >
-
-
-        <p
-          style="
-            opacity:.55;
-            font-size:13px;
-            margin-top:10px;
-          "
-        >
-
-          JPG, PNG or WebP · Maximum 5 MB
-
-        </p>
 
       </div>
 
 
-      <!-- ACCOUNT INFORMATION -->
-
-      <div
-        class="list-item"
-        style="
-          margin-top:10px;
-        "
-      >
+      <div class="list-item">
 
         <strong>
           👤 Full Name
@@ -7343,20 +7314,14 @@ async function renderProfile() {
 
         <p>
           ${escapeHtml(
-            p.full_name ||
-            "User"
+            p.full_name || "User"
           )}
         </p>
 
       </div>
 
 
-      <div
-        class="list-item"
-        style="
-          margin-top:12px;
-        "
-      >
+      <div class="list-item">
 
         <strong>
           📧 Email
@@ -7364,35 +7329,27 @@ async function renderProfile() {
 
         <p>
           ${escapeHtml(
-            user.email ||
-            ""
+            user.email || ""
           )}
         </p>
 
       </div>
 
 
-      <div
-        class="list-item"
-        style="
-          margin-top:12px;
-        "
-      >
+      <div class="list-item">
 
         <strong>
-          🏷️ Role
+          🎓 Role
         </strong>
 
         <p>
-          <strong>
-            ${escapeHtml(
-              String(
-                p.role ||
-                state.role ||
-                ""
-              ).toUpperCase()
-            )}
-          </strong>
+          ${escapeHtml(
+            String(
+              p.role ||
+              state.role ||
+              "student"
+            ).toUpperCase()
+          )}
         </p>
 
       </div>
@@ -7401,13 +7358,7 @@ async function renderProfile() {
       ${
         p.phone
           ? `
-
-            <div
-              class="list-item"
-              style="
-                margin-top:12px;
-              "
-            >
+            <div class="list-item">
 
               <strong>
                 📱 Phone
@@ -7420,23 +7371,45 @@ async function renderProfile() {
               </p>
 
             </div>
-
           `
           : ""
       }
-
 
     </div>
 
   `;
 
-/* =======================================================
-   UPLOAD PROFILE PHOTO
-======================================================= */
 
-const imageInput = $("#profileImageInput");
+  /* =======================================================
+     CHANGE PHOTO BUTTON
+  ======================================================= */
 
-if (imageInput) {
+  const changeButton =
+    $("#changeProfilePhoto");
+
+  const imageInput =
+    $("#profileImageInput");
+
+
+  if (
+    !changeButton ||
+    !imageInput
+  ) {
+    return;
+  }
+
+
+  changeButton.addEventListener(
+    "click",
+    () => {
+      imageInput.click();
+    }
+  );
+
+
+  /* =======================================================
+     UPLOAD PROFILE PHOTO
+  ======================================================= */
 
   imageInput.addEventListener(
     "change",
@@ -7445,10 +7418,12 @@ if (imageInput) {
       const file =
         imageInput.files?.[0];
 
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
 
-      /* CHECK FILE SIZE */
+      /* FILE SIZE */
 
       if (
         file.size >
@@ -7465,13 +7440,14 @@ if (imageInput) {
       }
 
 
-      /* CHECK FILE TYPE */
+      /* FILE TYPE */
 
       const allowedTypes = [
         "image/jpeg",
         "image/png",
         "image/webp"
       ];
+
 
       if (
         !allowedTypes.includes(
@@ -7489,16 +7465,9 @@ if (imageInput) {
       }
 
 
-      showToast(
-        "Checking account..."
-      );
-
-
       try {
 
-        /* =================================================
-           GET CURRENT SUPABASE SESSION
-        ================================================= */
+        /* GET SESSION */
 
         const {
           data: sessionData,
@@ -7512,20 +7481,13 @@ if (imageInput) {
           !sessionData?.session?.user
         ) {
 
-          console.error(
-            "Session error:",
-            sessionError
-          );
-
           showToast(
-            "Your login session has expired. Please log in again."
+            "Please log in again."
           );
 
           return;
         }
 
-
-        /* CURRENT AUTH USER */
 
         const currentUser =
           sessionData.session.user;
@@ -7534,20 +7496,12 @@ if (imageInput) {
           currentUser.id;
 
 
-        console.log(
-          "UPLOAD USER:",
-          currentUserId
-        );
-
-
         showToast(
           "Uploading photo..."
         );
 
 
-        /* =================================================
-           FILE PATH
-        ================================================= */
+        /* FILE EXTENSION */
 
         const extension =
           file.name
@@ -7555,19 +7509,12 @@ if (imageInput) {
             .pop()
             .toLowerCase();
 
+
         const filePath =
           `${currentUserId}/avatar.${extension}`;
 
 
-        console.log(
-          "AVATAR PATH:",
-          filePath
-        );
-
-
-        /* =================================================
-           UPLOAD TO SUPABASE STORAGE
-        ================================================= */
+        /* UPLOAD */
 
         const {
           error: uploadError
@@ -7600,9 +7547,7 @@ if (imageInput) {
         }
 
 
-        /* =================================================
-           GET PUBLIC URL
-        ================================================= */
+        /* PUBLIC URL */
 
         const {
           data: publicData
@@ -7629,9 +7574,7 @@ if (imageInput) {
         }
 
 
-        /* =================================================
-           SAVE URL TO PROFILE
-        ================================================= */
+        /* SAVE URL */
 
         const {
           error: profileError
@@ -7639,7 +7582,8 @@ if (imageInput) {
           await supabaseClient
             .from("profiles")
             .update({
-              avatar_url: publicUrl
+              avatar_url:
+                publicUrl
             })
             .eq(
               "id",
@@ -7662,14 +7606,16 @@ if (imageInput) {
         }
 
 
-        /* =================================================
-           UPDATE LOCAL STATE
-        ================================================= */
+        /* UPDATE STATE */
 
         state.profile = {
           ...state.profile,
-          avatar_url: publicUrl
+          avatar_url:
+            publicUrl
         };
+
+
+        imageInput.value = "";
 
 
         showToast(
@@ -7677,10 +7623,7 @@ if (imageInput) {
         );
 
 
-        imageInput.value = "";
-
-
-        /* REFRESH PROFILE */
+        /* REFRESH */
 
         await renderProfile();
 
