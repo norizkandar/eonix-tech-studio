@@ -895,6 +895,885 @@ async function renderTeacherHome() {
 }
 
 /* =========================================================
+   QUIZ
+========================================================= */
+
+async function renderQuiz() {
+  if (!state.user) return;
+
+  if (state.role === "teacher") {
+    await renderTeacherQuiz();
+  } else {
+    await renderStudentQuiz();
+  }
+}
+
+
+/* =========================================================
+   TEACHER QUIZ
+========================================================= */
+
+async function renderTeacherQuiz() {
+  const { data: classes, error } =
+    await supabaseClient
+      .from("classes")
+      .select("id, title")
+      .eq("teacher_id", state.user.id)
+      .order("created_at", {
+        ascending: false
+      });
+
+  if (error) {
+    console.error(error);
+    showToast(error.message);
+    return;
+  }
+
+  $("#content").innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">
+          QUIZ
+        </div>
+
+        <h1>
+          Create Quiz
+        </h1>
+
+        <p>
+          Create quizzes for your students.
+        </p>
+      </div>
+
+      <button
+        class="primary-btn"
+        onclick="openCreateQuizModal()">
+
+        + Create Quiz
+
+      </button>
+    </div>
+
+    <div class="panel">
+
+      <h2>
+        Your Quizzes
+      </h2>
+
+      <div id="teacherQuizList">
+        Loading quizzes...
+      </div>
+
+    </div>
+  `;
+
+  await loadTeacherQuizzes();
+}
+
+
+async function loadTeacherQuizzes() {
+  const box = $("#teacherQuizList");
+
+  if (!box) return;
+
+  const { data, error } =
+    await supabaseClient
+      .from("quizzes")
+      .select(`
+        id,
+        title,
+        description,
+        time_limit_minutes,
+        created_at,
+        classes (
+          title
+        )
+      `)
+      .order("created_at", {
+        ascending: false
+      });
+
+  if (error) {
+    console.error(error);
+
+    box.innerHTML = `
+      <div class="empty">
+        ${escapeHtml(error.message)}
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `
+      <div class="empty">
+
+        <h3>
+          No quizzes yet
+        </h3>
+
+        <p>
+          Create your first quiz for your students.
+        </p>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  box.innerHTML = data
+    .map(
+      (quiz) => `
+        <div class="list-item">
+
+          <strong>
+            📝
+            ${escapeHtml(
+              quiz.title ||
+              "Untitled Quiz"
+            )}
+          </strong>
+
+          <p>
+            ${escapeHtml(
+              quiz.description ||
+              "No description"
+            )}
+          </p>
+
+          <small>
+            Class:
+            ${escapeHtml(
+              quiz.classes?.title ||
+              "Unknown class"
+            )}
+            •
+            ${quiz.time_limit_minutes || 0}
+            minutes
+          </small>
+
+        </div>
+      `
+    )
+    .join("");
+}
+
+
+/* =========================================================
+   CREATE QUIZ MODAL
+========================================================= */
+
+async function openCreateQuizModal() {
+
+  const { data: classes, error } =
+    await supabaseClient
+      .from("classes")
+      .select("id, title")
+      .eq("teacher_id", state.user.id)
+      .order("created_at", {
+        ascending: false
+      });
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  openModal(`
+    <div class="modal-card">
+
+      <h2>
+        Create Quiz
+      </h2>
+
+      <form
+        id="createQuizForm"
+        style="margin-top:20px;">
+
+        <label>
+          Quiz Title
+        </label>
+
+        <input
+          id="quizTitle"
+          type="text"
+          placeholder="Example: Mathematics Chapter 1"
+          required
+        >
+
+        <label>
+          Description
+        </label>
+
+        <textarea
+          id="quizDescription"
+          placeholder="Enter quiz description..."
+          rows="4"
+        ></textarea>
+
+        <label>
+          Class
+        </label>
+
+        <select
+          id="quizClass"
+          required>
+
+          <option value="">
+            Select class
+          </option>
+
+          ${
+            (classes || [])
+              .map(
+                (item) => `
+                  <option value="${item.id}">
+                    ${escapeHtml(item.title)}
+                  </option>
+                `
+              )
+              .join("")
+          }
+
+        </select>
+
+        <label>
+          Time Limit (minutes)
+        </label>
+
+        <input
+          id="quizTime"
+          type="number"
+          min="1"
+          value="30"
+          required
+        >
+
+        <button
+          class="primary-btn"
+          type="submit"
+          style="margin-top:20px;">
+
+          Create Quiz
+
+        </button>
+
+      </form>
+
+    </div>
+  `);
+
+  const form = $("#createQuizForm");
+
+  form.addEventListener(
+    "submit",
+    async (event) => {
+
+      event.preventDefault();
+
+      const title =
+        $("#quizTitle").value.trim();
+
+      const description =
+        $("#quizDescription").value.trim();
+
+      const classId =
+        $("#quizClass").value;
+
+      const time =
+        Number(
+          $("#quizTime").value
+        );
+
+      if (!title || !classId) {
+        showToast(
+          "Please fill in all required fields."
+        );
+        return;
+      }
+
+      const { data, error } =
+        await supabaseClient
+          .from("quizzes")
+          .insert({
+            class_id: Number(classId),
+            title,
+            description,
+            time_limit_minutes: time
+          })
+          .select()
+          .single();
+
+      if (error) {
+        console.error(error);
+        showToast(error.message);
+        return;
+      }
+
+      closeModal();
+
+      showToast(
+        "Quiz created successfully!"
+      );
+
+      await renderQuiz();
+
+      if (data?.id) {
+        setTimeout(() => {
+          openAddQuizQuestionModal(data.id);
+        }, 300);
+      }
+
+    }
+  );
+}
+
+
+/* =========================================================
+   ADD QUIZ QUESTION
+========================================================= */
+
+function openAddQuizQuestionModal(
+  quizId
+) {
+
+  openModal(`
+    <div class="modal-card">
+
+      <h2>
+        Add Question
+      </h2>
+
+      <form
+        id="addQuizQuestionForm"
+        style="margin-top:20px;">
+
+        <label>
+          Question
+        </label>
+
+        <textarea
+          id="questionText"
+          rows="4"
+          placeholder="Enter your question..."
+          required
+        ></textarea>
+
+        <label>
+          Option A
+        </label>
+
+        <input
+          id="optionA"
+          required
+          placeholder="Option A"
+        >
+
+        <label>
+          Option B
+        </label>
+
+        <input
+          id="optionB"
+          required
+          placeholder="Option B"
+        >
+
+        <label>
+          Option C
+        </label>
+
+        <input
+          id="optionC"
+          required
+          placeholder="Option C"
+        >
+
+        <label>
+          Option D
+        </label>
+
+        <input
+          id="optionD"
+          required
+          placeholder="Option D"
+        >
+
+        <label>
+          Correct Answer
+        </label>
+
+        <select
+          id="correctAnswer"
+          required>
+
+          <option value="A">
+            A
+          </option>
+
+          <option value="B">
+            B
+          </option>
+
+          <option value="C">
+            C
+          </option>
+
+          <option value="D">
+            D
+          </option>
+
+        </select>
+
+        <button
+          class="primary-btn"
+          type="submit"
+          style="margin-top:20px;">
+
+          Save Question
+
+        </button>
+
+      </form>
+
+    </div>
+  `);
+
+  const form =
+    $("#addQuizQuestionForm");
+
+  form.addEventListener(
+    "submit",
+    async (event) => {
+
+      event.preventDefault();
+
+      const question =
+        $("#questionText")
+          .value
+          .trim();
+
+      const optionA =
+        $("#optionA")
+          .value
+          .trim();
+
+      const optionB =
+        $("#optionB")
+          .value
+          .trim();
+
+      const optionC =
+        $("#optionC")
+          .value
+          .trim();
+
+      const optionD =
+        $("#optionD")
+          .value
+          .trim();
+
+      const correctAnswer =
+        $("#correctAnswer")
+          .value;
+
+      const { error } =
+        await supabaseClient
+          .from("quiz_questions")
+          .insert({
+            quiz_id: quizId,
+            question,
+            option_a: optionA,
+            option_b: optionB,
+            option_c: optionC,
+            option_d: optionD,
+            correct_answer:
+              correctAnswer
+          });
+
+      if (error) {
+        console.error(error);
+        showToast(error.message);
+        return;
+      }
+
+      closeModal();
+
+      showToast(
+        "Question added successfully!"
+      );
+
+      await renderQuiz();
+
+    }
+  );
+}
+
+
+/* =========================================================
+   STUDENT QUIZ
+========================================================= */
+
+async function renderStudentQuiz() {
+
+  const box = $("#content");
+
+  if (!box) return;
+
+  const { data, error } =
+    await supabaseClient
+      .from("quizzes")
+      .select(`
+        id,
+        title,
+        description,
+        time_limit_minutes,
+        classes (
+          title
+        )
+      `)
+      .order("created_at", {
+        ascending: false
+      });
+
+  if (error) {
+    console.error(error);
+
+    box.innerHTML = `
+      <div class="empty">
+        ${escapeHtml(error.message)}
+      </div>
+    `;
+
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="page-head">
+
+      <div>
+
+        <div class="eyebrow">
+          QUIZ
+        </div>
+
+        <h1>
+          My Quizzes
+        </h1>
+
+        <p>
+          Test your knowledge.
+        </p>
+
+      </div>
+
+    </div>
+
+    <div class="panel">
+
+      ${
+        data?.length
+          ? data
+              .map(
+                (quiz) => `
+                  <div class="list-item">
+
+                    <strong>
+                      📝
+                      ${escapeHtml(
+                        quiz.title
+                      )}
+                    </strong>
+
+                    <p>
+                      ${escapeHtml(
+                        quiz.description ||
+                        "No description"
+                      )}
+                    </p>
+
+                    <small>
+                      ⏱
+                      ${
+                        quiz.time_limit_minutes ||
+                        0
+                      }
+                      minutes
+                    </small>
+
+                    <br><br>
+
+                    <button
+                      class="primary-btn"
+                      onclick="startQuiz('${quiz.id}')">
+
+                      Start Quiz
+
+                    </button>
+
+                  </div>
+                `
+              )
+              .join("")
+          : `
+            <div class="empty">
+
+              <h3>
+                No quizzes available
+              </h3>
+
+              <p>
+                Your teacher hasn't created a quiz yet.
+              </p>
+
+            </div>
+          `
+      }
+
+    </div>
+  `;
+}
+
+
+/* =========================================================
+   START QUIZ
+========================================================= */
+
+async function startQuiz(
+  quizId
+) {
+
+  const { data: quiz, error } =
+    await supabaseClient
+      .from("quizzes")
+      .select("*")
+      .eq("id", quizId)
+      .single();
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  const { data: questions, error: questionError } =
+    await supabaseClient
+      .from("quiz_questions")
+      .select("*")
+      .eq("quiz_id", quizId)
+      .order("id", {
+        ascending: true
+      });
+
+  if (questionError) {
+    showToast(
+      questionError.message
+    );
+    return;
+  }
+
+  if (!questions || questions.length === 0) {
+    showToast(
+      "This quiz has no questions yet."
+    );
+    return;
+  }
+
+  $("#content").innerHTML = `
+    <div class="page-head">
+
+      <div>
+
+        <div class="eyebrow">
+          QUIZ
+        </div>
+
+        <h1>
+          ${escapeHtml(
+            quiz.title
+          )}
+        </h1>
+
+        <p>
+          ${escapeHtml(
+            quiz.description ||
+            ""
+          )}
+        </p>
+
+      </div>
+
+    </div>
+
+    <div class="panel">
+
+      <form id="studentQuizForm">
+
+        ${questions
+          .map(
+            (q, index) => `
+              <div
+                class="list-item"
+                style="margin-bottom:18px;">
+
+                <strong>
+                  ${index + 1}.
+                  ${escapeHtml(
+                    q.question
+                  )}
+                </strong>
+
+                <div style="margin-top:14px;">
+
+                  ${["a", "b", "c", "d"]
+                    .map(
+                      (letter) => `
+                        <label
+                          style="
+                            display:block;
+                            margin:10px 0;
+                            cursor:pointer;
+                          ">
+
+                          <input
+                            type="radio"
+                            name="q_${q.id}"
+                            value="${letter.toUpperCase()}"
+                            required
+                          >
+
+                          ${letter.toUpperCase()}.
+                          ${escapeHtml(
+                            q[
+                              `option_${letter}`
+                            ]
+                          )}
+                        </label>
+                      `
+                    )
+                    .join("")}
+
+                </div>
+
+              </div>
+            `
+          )
+          .join("")}
+
+        <button
+          class="primary-btn"
+          type="submit">
+
+          Submit Quiz
+
+        </button>
+
+      </form>
+
+    </div>
+  `;
+
+  const form =
+    $("#studentQuizForm");
+
+  form.addEventListener(
+    "submit",
+    async (event) => {
+
+      event.preventDefault();
+
+      let correct = 0;
+
+      questions.forEach(
+        (q) => {
+
+          const answer =
+            document.querySelector(
+              `input[name="q_${q.id}"]:checked`
+            )?.value;
+
+          if (
+            answer &&
+            answer.toUpperCase() ===
+              String(
+                q.correct_answer
+              ).toUpperCase()
+          ) {
+            correct++;
+          }
+
+        }
+      );
+
+      const score =
+        Number(
+          (
+            (correct /
+              questions.length) *
+            100
+          ).toFixed(2)
+        );
+
+      const { error } =
+        await supabaseClient
+          .from("quiz_attempts")
+          .insert({
+            quiz_id: quizId,
+            student_id: state.user.id,
+            score,
+            started_at:
+              new Date().toISOString(),
+            completed_at:
+              new Date().toISOString()
+          });
+
+      if (error) {
+        console.error(error);
+        showToast(error.message);
+        return;
+      }
+
+      $("#content").innerHTML = `
+        <div class="panel">
+
+          <div class="empty">
+
+            <h2>
+              Quiz Completed 🎉
+            </h2>
+
+            <p>
+              Your score:
+              <strong>
+                ${score}%
+              </strong>
+            </p>
+
+            <p>
+              ${correct}
+              / ${questions.length}
+              correct
+            </p>
+
+            <button
+              class="primary-btn"
+              onclick="renderQuiz()">
+
+              Back to Quiz
+
+            </button>
+
+          </div>
+
+        </div>
+      `;
+
+    }
+  );
+}
+
+/* =========================================================
    PARENT DASHBOARD
 ========================================================= */
 
