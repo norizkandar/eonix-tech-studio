@@ -7430,14 +7430,13 @@ async function renderProfile() {
 
   `;
 
+/* =======================================================
+   UPLOAD PROFILE PHOTO
+======================================================= */
 
-  /* =======================================================
-     UPLOAD PROFILE PHOTO
-  ======================================================= */
+const imageInput = $("#profileImageInput");
 
-  const imageInput =
-    $("#profileImageInput");
-
+if (imageInput) {
 
   imageInput.addEventListener(
     "change",
@@ -7446,11 +7445,10 @@ async function renderProfile() {
       const file =
         imageInput.files?.[0];
 
-
       if (!file) return;
 
 
-      /* FILE SIZE */
+      /* CHECK FILE SIZE */
 
       if (
         file.size >
@@ -7467,14 +7465,13 @@ async function renderProfile() {
       }
 
 
-      /* FILE TYPE */
+      /* CHECK FILE TYPE */
 
       const allowedTypes = [
         "image/jpeg",
         "image/png",
         "image/webp"
       ];
-
 
       if (
         !allowedTypes.includes(
@@ -7493,11 +7490,64 @@ async function renderProfile() {
 
 
       showToast(
-        "Uploading photo..."
+        "Checking account..."
       );
 
 
       try {
+
+        /* =================================================
+           GET CURRENT SUPABASE SESSION
+        ================================================= */
+
+        const {
+          data: sessionData,
+          error: sessionError
+        } =
+          await supabaseClient.auth.getSession();
+
+
+        if (
+          sessionError ||
+          !sessionData?.session?.user
+        ) {
+
+          console.error(
+            "Session error:",
+            sessionError
+          );
+
+          showToast(
+            "Your login session has expired. Please log in again."
+          );
+
+          return;
+        }
+
+
+        /* CURRENT AUTH USER */
+
+        const currentUser =
+          sessionData.session.user;
+
+        const currentUserId =
+          currentUser.id;
+
+
+        console.log(
+          "UPLOAD USER:",
+          currentUserId
+        );
+
+
+        showToast(
+          "Uploading photo..."
+        );
+
+
+        /* =================================================
+           FILE PATH
+        ================================================= */
 
         const extension =
           file.name
@@ -7505,12 +7555,19 @@ async function renderProfile() {
             .pop()
             .toLowerCase();
 
-
         const filePath =
-          `${userId}/avatar.${extension}`;
+          `${currentUserId}/avatar.${extension}`;
 
 
-        /* UPLOAD */
+        console.log(
+          "AVATAR PATH:",
+          filePath
+        );
+
+
+        /* =================================================
+           UPLOAD TO SUPABASE STORAGE
+        ================================================= */
 
         const {
           error: uploadError
@@ -7523,8 +7580,7 @@ async function renderProfile() {
               file,
               {
                 upsert: true,
-                contentType:
-                  file.type
+                contentType: file.type
               }
             );
 
@@ -7532,6 +7588,7 @@ async function renderProfile() {
         if (uploadError) {
 
           console.error(
+            "UPLOAD ERROR:",
             uploadError
           );
 
@@ -7543,7 +7600,9 @@ async function renderProfile() {
         }
 
 
-        /* PUBLIC URL */
+        /* =================================================
+           GET PUBLIC URL
+        ================================================= */
 
         const {
           data: publicData
@@ -7570,7 +7629,9 @@ async function renderProfile() {
         }
 
 
-        /* SAVE URL TO PROFILE */
+        /* =================================================
+           SAVE URL TO PROFILE
+        ================================================= */
 
         const {
           error: profileError
@@ -7578,18 +7639,18 @@ async function renderProfile() {
           await supabaseClient
             .from("profiles")
             .update({
-              avatar_url:
-                publicUrl
+              avatar_url: publicUrl
             })
             .eq(
               "id",
-              userId
+              currentUserId
             );
 
 
         if (profileError) {
 
           console.error(
+            "PROFILE UPDATE ERROR:",
             profileError
           );
 
@@ -7601,12 +7662,13 @@ async function renderProfile() {
         }
 
 
-        /* UPDATE LOCAL STATE */
+        /* =================================================
+           UPDATE LOCAL STATE
+        ================================================= */
 
         state.profile = {
           ...state.profile,
-          avatar_url:
-            publicUrl
+          avatar_url: publicUrl
         };
 
 
@@ -7615,18 +7677,22 @@ async function renderProfile() {
         );
 
 
+        imageInput.value = "";
+
+
         /* REFRESH PROFILE */
 
         await renderProfile();
 
-
       } catch (error) {
 
         console.error(
+          "AVATAR ERROR:",
           error
         );
 
         showToast(
+          error.message ||
           "Upload failed."
         );
 
