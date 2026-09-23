@@ -6069,22 +6069,448 @@ function renderQuiz() {
 
 async function renderProgress() {
 
-  if (
-    state.role === "parent"
-  ) {
+  /* =======================================================
+     PARENT
+  ======================================================= */
+
+  if (state.role === "parent") {
 
     return renderSimple(
       "Child Progress",
       "PROGRESS",
       "Your child's learning progress will appear here."
     );
+
   }
 
-  renderSimple(
-    "Learning Progress",
-    "PROGRESS",
-    "Track your learning activity, results and achievements."
-  );
+
+  /* =======================================================
+     GET QUIZ ATTEMPTS
+  ======================================================= */
+
+  const {
+    data: attempts,
+    error: attemptError
+  } = await supabaseClient
+    .from("quiz_attempts")
+    .select(`
+      id,
+      quiz_id,
+      score,
+      completed_at,
+      quizzes (
+        title
+      )
+    `)
+    .eq(
+      "student_id",
+      state.user.id
+    )
+    .order(
+      "completed_at",
+      {
+        ascending: false
+      }
+    );
+
+
+  if (attemptError) {
+
+    console.error(
+      attemptError
+    );
+
+    showToast(
+      attemptError.message
+    );
+
+    return;
+
+  }
+
+
+  /* =======================================================
+     QUIZ STATISTICS
+  ======================================================= */
+
+  const quizAttempts =
+    attempts || [];
+
+  const quizCount =
+    quizAttempts.length;
+
+  let quizAverage = 0;
+
+  if (quizCount > 0) {
+
+    const totalScore =
+      quizAttempts.reduce(
+        (
+          total,
+          item
+        ) =>
+          total +
+          Number(
+            item.score || 0
+          ),
+        0
+      );
+
+    quizAverage =
+      Math.round(
+        totalScore /
+        quizCount
+      );
+
+  }
+
+
+  /* =======================================================
+     OVERALL PROGRESS
+  ======================================================= */
+
+  /*
+   * Simple progress calculation:
+   * quiz average = main progress indicator
+   */
+
+  const overallProgress =
+    quizCount > 0
+      ? quizAverage
+      : 0;
+
+
+  /* =======================================================
+     RECENT QUIZZES
+  ======================================================= */
+
+  const recentQuizzes =
+    quizAttempts
+      .slice(0, 5);
+
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
+
+  $("#content").innerHTML = `
+
+    <div class="page-head">
+
+      <div>
+
+        <div class="eyebrow">
+          PROGRESS
+        </div>
+
+        <h1>
+          Learning Progress
+        </h1>
+
+        <p>
+          Track your learning activity,
+          results and achievements.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <!-- OVERALL PROGRESS -->
+
+    <div
+      class="panel"
+      style="
+        margin-bottom:20px;
+      ">
+
+      <h2>
+        Overall Progress
+      </h2>
+
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          gap:24px;
+          margin-top:20px;
+          flex-wrap:wrap;
+        ">
+
+        <div
+          style="
+            width:120px;
+            height:120px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:28px;
+            font-weight:800;
+            background:
+              conic-gradient(
+                #00e5a8
+                ${overallProgress * 3.6}deg,
+                rgba(255,255,255,.08)
+                0deg
+              );
+          ">
+
+          <div
+            style="
+              width:92px;
+              height:92px;
+              border-radius:50%;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              background:#07131f;
+            ">
+
+            ${overallProgress}%
+
+          </div>
+
+        </div>
+
+
+        <div>
+
+          <h3>
+            ${
+              quizCount > 0
+                ? "Keep going! 🚀"
+                : "Start learning! 🚀"
+            }
+          </h3>
+
+          <p
+            style="
+              opacity:.7;
+              margin-top:6px;
+            ">
+
+            ${
+              quizCount > 0
+                ? `You have completed ${quizCount} quiz${quizCount > 1 ? "zes" : ""}.`
+                : "Complete your first quiz to start tracking your progress."
+            }
+
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- STATISTICS -->
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            auto-fit,
+            minmax(180px, 1fr)
+          );
+        gap:16px;
+        margin-bottom:20px;
+      ">
+
+
+      <div class="panel">
+
+        <div
+          style="
+            font-size:13px;
+            opacity:.7;
+          ">
+
+          QUIZZES COMPLETED
+
+        </div>
+
+        <div
+          style="
+            font-size:32px;
+            font-weight:800;
+            margin-top:8px;
+          ">
+
+          ${quizCount}
+
+        </div>
+
+      </div>
+
+
+      <div class="panel">
+
+        <div
+          style="
+            font-size:13px;
+            opacity:.7;
+          ">
+
+          QUIZ AVERAGE
+
+        </div>
+
+        <div
+          style="
+            font-size:32px;
+            font-weight:800;
+            margin-top:8px;
+          ">
+
+          ${quizAverage}%
+
+        </div>
+
+      </div>
+
+
+      <div class="panel">
+
+        <div
+          style="
+            font-size:13px;
+            opacity:.7;
+          ">
+
+          BEST SCORE
+
+        </div>
+
+        <div
+          style="
+            font-size:32px;
+            font-weight:800;
+            margin-top:8px;
+          ">
+
+          ${
+            quizCount > 0
+              ? Math.max(
+                  ...quizAttempts.map(
+                    (item) =>
+                      Number(
+                        item.score || 0
+                      )
+                  )
+                )
+              : 0
+          }%
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- RECENT QUIZ RESULTS -->
+
+    <div class="panel">
+
+      <h2>
+        Recent Quiz Results
+      </h2>
+
+
+      <div
+        style="
+          margin-top:18px;
+        ">
+
+        ${
+          recentQuizzes.length > 0
+
+            ? recentQuizzes
+                .map(
+                  (attempt) => `
+
+                    <div
+                      class="list-item"
+                      style="
+                        margin-bottom:12px;
+                      ">
+
+                      <strong>
+
+                        📝
+
+                        ${escapeHtml(
+                          attempt
+                            .quizzes
+                            ?.title ||
+                          "Quiz"
+                        )}
+
+                      </strong>
+
+
+                      <p>
+
+                        Score:
+
+                        <strong>
+
+                          ${Number(
+                            attempt.score || 0
+                          )}%
+
+                        </strong>
+
+                      </p>
+
+
+                      <small>
+
+                        Completed:
+
+                        ${
+                          attempt.completed_at
+                            ? new Date(
+                                attempt.completed_at
+                              ).toLocaleString()
+                            : "-"
+                        }
+
+                      </small>
+
+                    </div>
+
+                  `
+                )
+                .join("")
+
+            : `
+
+              <div class="empty">
+
+                <h3>
+                  No quiz results yet
+                </h3>
+
+                <p>
+                  Complete a quiz to see
+                  your progress here.
+                </p>
+
+              </div>
+
+            `
+        }
+
+      </div>
+
+    </div>
+
+  `;
 }
 
 /* =========================================================
