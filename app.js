@@ -6529,15 +6529,18 @@ async function renderChat() {
   ======================================================= */
 
   const {
-    data: teachers,
-    error
-  } = await supabaseClient
-    .from("profiles")
-    .select("id, full_name")
-    .eq("role", "teacher")
-    .order("full_name", {
-      ascending: true
-    });
+  data: teachers,
+  error
+} = await supabaseClient
+  .from("profiles")
+  .select("id, full_name, role")
+  .eq("role", "teacher")
+  .order("full_name", {
+    ascending: true
+  });
+
+console.log("TEACHERS:", teachers);
+console.log("TEACHER ERROR:", error);
 
 
   if (error) {
