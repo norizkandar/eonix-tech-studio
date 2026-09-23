@@ -6525,67 +6525,28 @@ async function renderChat() {
 
 
   /* =======================================================
-     LOAD TEACHERS
-  ======================================================= */
+   LOAD CHAT USERS
+======================================================= */
 
-  const {
-  data: teachers,
+const targetRole =
+  state.role === "teacher"
+    ? "student"
+    : "teacher";
+
+const {
+  data: chatUsers,
   error
 } = await supabaseClient
   .from("profiles")
   .select("id, full_name, role")
-  .eq("role", "teacher")
+  .eq("role", targetRole)
   .order("full_name", {
     ascending: true
   });
 
-console.log("TEACHERS:", teachers);
-console.log("TEACHER ERROR:", error);
-
-
-  if (error) {
-
-    console.error(error);
-
-    app.innerHTML = `
-      <section class="page-section">
-
-        <div class="page-header">
-
-          <div>
-
-            <div class="eyebrow">
-              MESSAGES
-            </div>
-
-            <h1>
-              Messages
-            </h1>
-
-            <p>
-              Chat with your teacher.
-            </p>
-
-          </div>
-
-        </div>
-
-        <div class="card"
-          style="margin-top:20px;">
-
-          ${escapeHtml(
-            error.message
-          )}
-
-        </div>
-
-      </section>
-    `;
-
-    return;
-  }
-
-
+console.log("CHAT USERS:", chatUsers);
+console.log("CHAT USER ERROR:", error);
+  
   /* =======================================================
      CHAT PAGE
   ======================================================= */
