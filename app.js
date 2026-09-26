@@ -4023,6 +4023,7 @@ async function joinClassByCode(
 window.joinClassByCode =
   joinClassByCode;
 
+
 /* =========================================================
    REPLAY
 ========================================================= */
@@ -4030,6 +4031,7 @@ window.joinClassByCode =
 async function renderReplay() {
 
   $("#content").innerHTML = `
+
     <div class="page-head">
 
       <div>
@@ -4043,7 +4045,7 @@ async function renderReplay() {
         </h1>
 
         <p>
-          Secure recordings from your enrolled classes.
+          Replay recordings from your classes.
         </p>
 
       </div>
@@ -4052,17 +4054,24 @@ async function renderReplay() {
 
     <div
       id="replayList"
-      class="card-grid">
+      class="card-grid"
+    >
 
       <div class="empty">
         Loading replays...
       </div>
 
     </div>
+
   `;
 
   await loadReplays();
 }
+
+
+/* =========================================================
+   LOAD REPLAYS
+========================================================= */
 
 async function loadReplays() {
 
@@ -4076,55 +4085,73 @@ async function loadReplays() {
     return;
   }
 
-  const { data, error } =
+
+  const {
+    data,
+    error
+  } =
     await supabaseClient
-      .from("class_replays")
+      .from("replays")
       .select(`
         id,
-        title,
-        subject,
-        teacher_name,
-        recorded_at,
-        duration_seconds,
         class_id,
-        storage_path
+        title,
+        description,
+        video_url,
+        created_at,
+        classes (
+          id,
+          name,
+          subject
+        )
       `)
       .order(
-        "recorded_at",
+        "created_at",
         {
           ascending: false
         }
       );
 
+
   if (error) {
 
-    console.warn(error);
+    console.error(
+      "Replay error:",
+      error
+    );
 
     list.innerHTML = `
+
       <div class="empty">
 
         <h3>
-          🎥 No replay available
+          🎥 Unable to load replays
         </h3>
 
         <p>
-          Verified class recordings will appear here.
+          ${escapeHtml(
+            error.message
+          )}
         </p>
 
       </div>
+
     `;
 
     return;
   }
 
+
   state.replayCache =
     data || [];
+
 
   if (
     !state.replayCache.length
   ) {
 
     list.innerHTML = `
+
       <div class="empty">
 
         <h3>
@@ -4132,75 +4159,116 @@ async function loadReplays() {
         </h3>
 
         <p>
-          Your class recordings will appear here
-          after a LIVE session is published.
+          Class recordings will appear here
+          when a teacher adds a replay.
         </p>
 
       </div>
+
     `;
 
     return;
   }
 
+
   list.innerHTML =
     state.replayCache
       .map(
-        (r) => `
-          <article class="class-card">
+        (r) => {
 
-            <div class="class-thumb">
-              ▶
-            </div>
+          const classInfo =
+            r.classes || {};
 
-            <div class="class-info">
+          return `
 
-              <span class="badge">
-                ${escapeHtml(
-                  r.subject ||
-                  "Class"
-                )}
-              </span>
+            <article class="class-card">
 
-              <h3>
-                ${escapeHtml(
-                  r.title
-                )}
-              </h3>
+              <div class="class-thumb">
+                ▶
+              </div>
 
-              <p>
-                👨‍🏫
-                ${escapeHtml(
-                  r.teacher_name ||
-                  "Teacher"
-                )}
-              </p>
 
-              <p>
-                📅
-                ${new Date(
-                  r.recorded_at
-                ).toLocaleDateString()}
-              </p>
+              <div class="class-info">
 
-              <button
-                class="primary-btn"
-                onclick="openReplay('${r.id}')">
+                <span class="badge">
 
-                ▶ Watch Replay
+                  ${escapeHtml(
+                    classInfo.subject ||
+                    "Class"
+                  )}
 
-              </button>
+                </span>
 
-            </div>
 
-          </article>
-        `
+                <h3>
+
+                  ${escapeHtml(
+                    r.title ||
+                    "Class Replay"
+                  )}
+
+                </h3>
+
+
+                <p>
+
+                  📚
+                  ${escapeHtml(
+                    classInfo.name ||
+                    "Class"
+                  )}
+
+                </p>
+
+
+                ${
+                  r.description
+                    ? `
+                      <p>
+                        ${escapeHtml(
+                          r.description
+                        )}
+                      </p>
+                    `
+                    : ""
+                }
+
+
+                <p>
+
+                  📅
+                  ${new Date(
+                    r.created_at
+                  ).toLocaleDateString()}
+
+                </p>
+
+
+                <button
+                  class="primary-btn"
+                  onclick="openReplay('${r.id}')"
+                >
+
+                  ▶ Watch Replay
+
+                </button>
+
+              </div>
+
+            </article>
+
+          `;
+        }
       )
       .join("");
 }
 
-async function openReplay(
-  id
-) {
+
+/* =========================================================
+   OPEN REPLAY
+========================================================= */
+
+async function openReplay(id) {
 
   const replay =
     state.replayCache.find(
@@ -4208,6 +4276,7 @@ async function openReplay(
         String(r.id) ===
         String(id)
     );
+
 
   if (!replay) {
 
@@ -4218,119 +4287,87 @@ async function openReplay(
     return;
   }
 
+
   openModal(`
+
     <div class="replay-player">
 
-      <div
-        id="replayVideoArea"
-        class="empty">
-
-        Checking replay access...
-
-      </div>
-
-    </div>
-
-    <div class="replay-meta">
-
-      <div class="eyebrow">
-        ${escapeHtml(
-          replay.subject ||
-          "CLASS"
-        )}
-      </div>
-
-      <h2>
-        ${escapeHtml(
-          replay.title
-        )}
-      </h2>
-
-      <p>
-        👨‍🏫
-        ${escapeHtml(
-          replay.teacher_name ||
-          "Teacher"
-        )}
-      </p>
-
-    </div>
-  `);
-
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient.functions.invoke(
-        "create-replay-access",
-        {
-          body: {
-            replay_id: id
-          }
-        }
-      );
-
-    const area =
-      $("#replayVideoArea");
-
-    if (!area) return;
-
-    if (
-      error ||
-      !data?.signed_url
-    ) {
-
-      area.innerHTML = `
-        <div style="padding:35px">
-
-          <div style="font-size:42px">
-            🔒
-          </div>
-
-          <h3>
-            Replay access unavailable
-          </h3>
-
-          <p>
-            This recording requires authenticated
-            enrollment and secure backend access.
-          </p>
-
-        </div>
-      `;
-
-      return;
-    }
-
-    area.innerHTML = `
       <video
         controls
         playsinline
         preload="metadata"
-        style="width:100%;border-radius:18px">
+        style="
+          width:100%;
+          border-radius:18px;
+          background:#000;
+        "
+      >
 
         <source
           src="${escapeHtml(
-            data.signed_url
+            replay.video_url
           )}"
-          type="video/mp4">
+        >
 
-        Your browser does not support video playback.
+        Your browser does not support
+        video playback.
 
       </video>
-    `;
 
-  } catch (error) {
+    </div>
 
-    console.error(error);
 
-    showToast(
-      "Could not open replay."
-    );
-  }
+    <div class="replay-meta">
+
+      <div class="eyebrow">
+
+        ${escapeHtml(
+          replay.classes?.subject ||
+          "CLASS"
+        )}
+
+      </div>
+
+
+      <h2>
+
+        ${escapeHtml(
+          replay.title ||
+          "Class Replay"
+        )}
+
+      </h2>
+
+
+      <p>
+
+        📚
+        ${escapeHtml(
+          replay.classes?.name ||
+          "Class"
+        )}
+
+      </p>
+
+
+      ${
+        replay.description
+          ? `
+            <p>
+              ${escapeHtml(
+                replay.description
+              )}
+            </p>
+          `
+          : ""
+      }
+
+    </div>
+
+  `);
+
 }
+
 
 window.openReplay =
   openReplay;
