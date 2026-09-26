@@ -4023,7 +4023,6 @@ async function joinClassByCode(
 window.joinClassByCode =
   joinClassByCode;
 
-
 /* =========================================================
    REPLAY
 ========================================================= */
@@ -4075,50 +4074,38 @@ async function renderReplay() {
 
 async function loadReplays() {
 
-  const list =
-    $("#replayList");
+  const list = $("#replayList");
 
-  if (
-    !list ||
-    !state.user
-  ) {
+  if (!list || !state.user) {
     return;
   }
-
 
   const {
     data,
     error
-  } =
-    await supabaseClient
-      .from("replays")
-      .select(`
+  } = await supabaseClient
+    .from("replays")
+    .select(`
+      id,
+      class_id,
+      title,
+      description,
+      video_url,
+      created_at,
+      classes (
         id,
-        class_id,
         title,
-        description,
-        video_url,
-        created_at,
-        classes (
-          id,
-          name,
-          subject
-        )
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
+        subject_id
+      )
+    `)
+    .order("created_at", {
+      ascending: false
+    });
 
 
   if (error) {
 
-    console.error(
-      "Replay error:",
-      error
-    );
+    console.error("Replay error:", error);
 
     list.innerHTML = `
 
@@ -4129,9 +4116,7 @@ async function loadReplays() {
         </h3>
 
         <p>
-          ${escapeHtml(
-            error.message
-          )}
+          ${escapeHtml(error.message)}
         </p>
 
       </div>
@@ -4142,13 +4127,10 @@ async function loadReplays() {
   }
 
 
-  state.replayCache =
-    data || [];
+  state.replayCache = data || [];
 
 
-  if (
-    !state.replayCache.length
-  ) {
+  if (!state.replayCache.length) {
 
     list.innerHTML = `
 
@@ -4173,93 +4155,76 @@ async function loadReplays() {
 
   list.innerHTML =
     state.replayCache
-      .map(
-        (r) => {
+      .map((r) => {
 
-          const classInfo =
-            r.classes || {};
+        const classInfo = r.classes || {};
 
-          return `
+        return `
 
-            <article class="class-card">
+          <article class="class-card">
 
-              <div class="class-thumb">
-                ▶
-              </div>
+            <div class="class-thumb">
+              ▶
+            </div>
 
 
-              <div class="class-info">
+            <div class="class-info">
 
-                <span class="badge">
-
-                  ${escapeHtml(
-                    classInfo.subject ||
-                    "Class"
-                  )}
-
-                </span>
+              <span class="badge">
+                CLASS REPLAY
+              </span>
 
 
-                <h3>
-
-                  ${escapeHtml(
-                    r.title ||
-                    "Class Replay"
-                  )}
-
-                </h3>
+              <h3>
+                ${escapeHtml(
+                  r.title || "Class Replay"
+                )}
+              </h3>
 
 
-                <p>
-
-                  📚
-                  ${escapeHtml(
-                    classInfo.title ||
-                    "Class"
-                  )}
-
-                </p>
+              <p>
+                📚
+                ${escapeHtml(
+                  classInfo.title || "Class"
+                )}
+              </p>
 
 
-                ${
-                  r.description
-                    ? `
-                      <p>
-                        ${escapeHtml(
-                          r.description
-                        )}
-                      </p>
-                    `
-                    : ""
-                }
+              ${
+                r.description
+                  ? `
+                    <p>
+                      ${escapeHtml(
+                        r.description
+                      )}
+                    </p>
+                  `
+                  : ""
+              }
 
 
-                <p>
-
-                  📅
-                  ${new Date(
-                    r.created_at
-                  ).toLocaleDateString()}
-
-                </p>
+              <p>
+                📅
+                ${new Date(
+                  r.created_at
+                ).toLocaleDateString()}
+              </p>
 
 
-                <button
-                  class="primary-btn"
-                  onclick="openReplay('${r.id}')"
-                >
+              <button
+                class="primary-btn"
+                onclick="openReplay('${r.id}')"
+              >
+                ▶ Watch Replay
+              </button>
 
-                  ▶ Watch Replay
+            </div>
 
-                </button>
+          </article>
 
-              </div>
+        `;
 
-            </article>
-
-          `;
-        }
-      )
+      })
       .join("");
 }
 
@@ -4273,20 +4238,119 @@ async function openReplay(id) {
   const replay =
     state.replayCache.find(
       (r) =>
-        String(r.id) ===
-        String(id)
+        String(r.id) === String(id)
     );
 
 
   if (!replay) {
 
-    showToast(
-      "Replay not found."
-    );
+    showToast("Replay not found.");
 
     return;
   }
 
+
+  const videoUrl =
+    replay.video_url || "";
+
+
+  /*
+     Detect YouTube URL
+  */
+
+  let youtubeId = null;
+
+
+  const youtubeMatch =
+    videoUrl.match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?/]+)/
+    );
+
+
+  if (youtubeMatch) {
+
+    youtubeId =
+      youtubeMatch[1];
+
+  }
+
+
+  /*
+     YouTube replay
+  */
+
+  if (youtubeId) {
+
+    openModal(`
+
+      <div class="replay-player">
+
+        <iframe
+          src="https://www.youtube.com/embed/${encodeURIComponent(
+            youtubeId
+          )}"
+          title="Class Replay"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+          style="
+            width:100%;
+            aspect-ratio:16/9;
+            border:0;
+            border-radius:18px;
+            background:#000;
+          "
+        ></iframe>
+
+      </div>
+
+
+      <div class="replay-meta">
+
+        <div class="eyebrow">
+          CLASS REPLAY
+        </div>
+
+
+        <h2>
+          ${escapeHtml(
+            replay.title ||
+            "Class Replay"
+          )}
+        </h2>
+
+
+        <p>
+          📚
+          ${escapeHtml(
+            replay.classes?.title ||
+            "Class"
+          )}
+        </p>
+
+
+        ${
+          replay.description
+            ? `
+              <p>
+                ${escapeHtml(
+                  replay.description
+                )}
+              </p>
+            `
+            : ""
+        }
+
+      </div>
+
+    `);
+
+    return;
+  }
+
+
+  /*
+     Direct video / MP4 replay
+  */
 
   openModal(`
 
@@ -4304,9 +4368,7 @@ async function openReplay(id) {
       >
 
         <source
-          src="${escapeHtml(
-            replay.video_url
-          )}"
+          src="${escapeHtml(videoUrl)}"
         >
 
         Your browser does not support
@@ -4320,33 +4382,24 @@ async function openReplay(id) {
     <div class="replay-meta">
 
       <div class="eyebrow">
-
-        ${escapeHtml(
-          replay.classes?.subject ||
-          "CLASS"
-        )}
-
+        CLASS REPLAY
       </div>
 
 
       <h2>
-
         ${escapeHtml(
           replay.title ||
           "Class Replay"
         )}
-
       </h2>
 
 
       <p>
-
         📚
         ${escapeHtml(
-          replay.classes?.name ||
+          replay.classes?.title ||
           "Class"
         )}
-
       </p>
 
 
@@ -4369,8 +4422,7 @@ async function openReplay(id) {
 }
 
 
-window.openReplay =
-  openReplay;
+window.openReplay = openReplay;
 
 /* =========================================================
    HOMEWORK
