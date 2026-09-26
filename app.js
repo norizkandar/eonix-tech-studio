@@ -4029,6 +4029,9 @@ window.joinClassByCode =
 
 async function renderReplay() {
 
+  const isTeacher =
+    state.role === "teacher";
+
   $("#content").innerHTML = `
 
     <div class="page-head">
@@ -4040,16 +4043,51 @@ async function renderReplay() {
         </div>
 
         <h1>
-          Watch your classes again.
+          ${
+            isTeacher
+              ? "Manage your class replays."
+              : "Watch your classes again."
+          }
         </h1>
 
         <p>
-          Replay recordings from your classes.
+          ${
+            isTeacher
+              ? "Add recorded lessons for your students."
+              : "Replay recordings from your classes."
+          }
         </p>
 
       </div>
 
+
+      ${
+        isTeacher
+          ? `
+            <button
+              class="primary-btn"
+              onclick="showAddReplayForm()"
+            >
+              + Add Replay
+            </button>
+          `
+          : ""
+      }
+
     </div>
+
+
+    ${
+      isTeacher
+        ? `
+          <div
+            id="addReplayForm"
+            style="display:none; margin-bottom:24px;"
+          ></div>
+        `
+        : ""
+    }
+
 
     <div
       id="replayList"
@@ -4079,6 +4117,7 @@ async function loadReplays() {
   if (!list || !state.user) {
     return;
   }
+
 
   const {
     data,
@@ -4141,8 +4180,11 @@ async function loadReplays() {
         </h3>
 
         <p>
-          Class recordings will appear here
-          when a teacher adds a replay.
+          ${
+            state.role === "teacher"
+              ? "Add your first class replay using the button above."
+              : "Class recordings will appear here when a teacher adds a replay."
+          }
         </p>
 
       </div>
@@ -4157,7 +4199,9 @@ async function loadReplays() {
     state.replayCache
       .map((r) => {
 
-        const classInfo = r.classes || {};
+        const classInfo =
+          r.classes || {};
+
 
         return `
 
@@ -4230,6 +4274,335 @@ async function loadReplays() {
 
 
 /* =========================================================
+   SHOW ADD REPLAY FORM
+========================================================= */
+
+async function showAddReplayForm() {
+
+  const form =
+    $("#addReplayForm");
+
+  if (!form) {
+    return;
+  }
+
+
+  const {
+    data: classes,
+    error
+  } = await supabaseClient
+    .from("classes")
+    .select(`
+      id,
+      title,
+      subject_id
+    `)
+    .eq(
+      "teacher_id",
+      state.user.id
+    )
+    .order("created_at", {
+      ascending: false
+    });
+
+
+  if (error) {
+
+    console.error(
+      "Class loading error:",
+      error
+    );
+
+    form.style.display = "block";
+
+    form.innerHTML = `
+
+      <div class="empty">
+
+        <h3>
+          Unable to load classes
+        </h3>
+
+        <p>
+          ${escapeHtml(error.message)}
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  if (!classes || !classes.length) {
+
+    form.style.display = "block";
+
+    form.innerHTML = `
+
+      <div class="empty">
+
+        <h3>
+          No class available
+        </h3>
+
+        <p>
+          Create a class first before adding a replay.
+        </p>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  form.style.display = "block";
+
+
+  form.innerHTML = `
+
+    <div class="card">
+
+      <div class="eyebrow">
+        ADD CLASS REPLAY
+      </div>
+
+
+      <h2>
+        Add a recorded lesson
+      </h2>
+
+
+      <div style="margin-top:20px;">
+
+        <label>
+          Class
+        </label>
+
+        <select
+          id="replayClass"
+          class="input"
+          style="width:100%; margin-top:8px;"
+        >
+
+          ${
+            classes
+              .map(
+                (c) => `
+                  <option value="${c.id}">
+                    ${escapeHtml(
+                      c.title || "Class"
+                    )}
+                  </option>
+                `
+              )
+              .join("")
+          }
+
+        </select>
+
+      </div>
+
+
+      <div style="margin-top:16px;">
+
+        <label>
+          Replay Title
+        </label>
+
+        <input
+          id="replayTitle"
+          class="input"
+          type="text"
+          placeholder="Example: Mathematics Chapter 3"
+          style="width:100%; margin-top:8px;"
+        >
+
+      </div>
+
+
+      <div style="margin-top:16px;">
+
+        <label>
+          Description
+        </label>
+
+        <textarea
+          id="replayDescription"
+          class="input"
+          placeholder="Short description of this lesson"
+          rows="3"
+          style="width:100%; margin-top:8px;"
+        ></textarea>
+
+      </div>
+
+
+      <div style="margin-top:16px;">
+
+        <label>
+          YouTube Video URL
+        </label>
+
+        <input
+          id="replayVideoUrl"
+          class="input"
+          type="url"
+          placeholder="https://www.youtube.com/watch?v=..."
+          style="width:100%; margin-top:8px;"
+        >
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:12px;
+          margin-top:20px;
+        "
+      >
+
+        <button
+          class="primary-btn"
+          onclick="addReplay()"
+        >
+          Add Replay
+        </button>
+
+
+        <button
+          class="secondary-btn"
+          onclick="hideAddReplayForm()"
+        >
+          Cancel
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   HIDE ADD REPLAY FORM
+========================================================= */
+
+function hideAddReplayForm() {
+
+  const form =
+    $("#addReplayForm");
+
+  if (!form) {
+    return;
+  }
+
+  form.style.display = "none";
+
+  form.innerHTML = "";
+}
+
+
+/* =========================================================
+   ADD REPLAY
+========================================================= */
+
+async function addReplay() {
+
+  const classId =
+    $("#replayClass")?.value;
+
+  const title =
+    $("#replayTitle")?.value.trim();
+
+  const description =
+    $("#replayDescription")?.value.trim();
+
+  const videoUrl =
+    $("#replayVideoUrl")?.value.trim();
+
+
+  if (!classId) {
+
+    showToast(
+      "Please select a class."
+    );
+
+    return;
+  }
+
+
+  if (!title) {
+
+    showToast(
+      "Please enter a replay title."
+    );
+
+    return;
+  }
+
+
+  if (!videoUrl) {
+
+    showToast(
+      "Please enter the video URL."
+    );
+
+    return;
+  }
+
+
+  const {
+    data,
+    error
+  } = await supabaseClient
+    .from("replays")
+    .insert({
+      class_id: Number(classId),
+      title: title,
+      description:
+        description || null,
+      video_url: videoUrl
+    })
+    .select()
+    .single();
+
+
+  if (error) {
+
+    console.error(
+      "Add replay error:",
+      error
+    );
+
+    showToast(
+      error.message
+    );
+
+    return;
+  }
+
+
+  showToast(
+    "Replay added successfully!"
+  );
+
+
+  hideAddReplayForm();
+
+
+  await loadReplays();
+
+}
+
+
+/* =========================================================
    OPEN REPLAY
 ========================================================= */
 
@@ -4238,13 +4611,16 @@ async function openReplay(id) {
   const replay =
     state.replayCache.find(
       (r) =>
-        String(r.id) === String(id)
+        String(r.id) ===
+        String(id)
     );
 
 
   if (!replay) {
 
-    showToast("Replay not found.");
+    showToast(
+      "Replay not found."
+    );
 
     return;
   }
@@ -4253,10 +4629,6 @@ async function openReplay(id) {
   const videoUrl =
     replay.video_url || "";
 
-
-  /*
-     Detect YouTube URL
-  */
 
   let youtubeId = null;
 
@@ -4274,10 +4646,6 @@ async function openReplay(id) {
 
   }
 
-
-  /*
-     YouTube replay
-  */
 
   if (youtubeId) {
 
@@ -4347,10 +4715,6 @@ async function openReplay(id) {
     return;
   }
 
-
-  /*
-     Direct video / MP4 replay
-  */
 
   openModal(`
 
@@ -4422,7 +4786,17 @@ async function openReplay(id) {
 }
 
 
-window.openReplay = openReplay;
+window.openReplay =
+  openReplay;
+
+window.showAddReplayForm =
+  showAddReplayForm;
+
+window.hideAddReplayForm =
+  hideAddReplayForm;
+
+window.addReplay =
+  addReplay;
 
 /* =========================================================
    HOMEWORK
