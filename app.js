@@ -4214,7 +4214,7 @@ async function loadReplays() {
 
                   📚
                   ${escapeHtml(
-                    classInfo.name ||
+                    classInfo.title ||
                     "Class"
                   )}
 
