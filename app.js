@@ -2720,19 +2720,27 @@ async function renderClasses() {
         flex-wrap:wrap;
       ">
 
-        ${
-          state.role === "student"
-            ? `
-              <button
-                class="primary-btn"
-                onclick="openJoinClassCodeModal()">
+                 ${
+                    state.role === "student"
+                        ? `
+                         <button
+                          class="primary-btn"
+                          onclick="openJoinClassCodeModal()">
 
-                🔑 Join with Class Code
+                      🔑 Join with Class Code
 
-              </button>
-            `
-            : ""
-        }
+                     </button>
+
+                      <button
+                         class="primary-btn"
+                         onclick="showStudentLiveClasses()">
+
+                       🔴 Live Now
+
+                    </button>
+                       `
+                     : ""
+                 }
 
         ${
           state.role === "teacher"
@@ -3210,6 +3218,259 @@ window.startLiveCamera =
 window.startLiveClass =
   startLiveClass;
 
+/* =========================================================
+   STUDENT LIVE CLASSES
+========================================================= */
+
+async function loadActiveLiveClasses() {
+
+  const { data, error } =
+    await supabaseClient
+      .from("live_classes")
+      .select(`
+        id,
+        class_id,
+        title,
+        starts_at,
+        duration_minutes,
+        status,
+        classes (
+          id,
+          title,
+          teacher_id
+        )
+      `)
+      .eq("status", "live")
+      .order("starts_at", {
+        ascending: false
+      });
+
+  if (error) {
+
+    console.error(
+      "Load active live classes:",
+      error
+    );
+
+    return [];
+  }
+
+  return data || [];
+}
+
+
+async function showStudentLiveClasses() {
+
+  const liveClasses =
+    await loadActiveLiveClasses();
+
+  if (!liveClasses.length) {
+
+    showToast(
+      "No live class right now."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      LIVE CLASSES
+    </div>
+
+    <h2>
+      🔴 Live Now
+    </h2>
+
+    <p>
+      Join your teacher's live class.
+    </p>
+
+    <div
+      style="
+        display:grid;
+        gap:14px;
+        margin-top:20px;
+      "
+    >
+
+      ${
+        liveClasses
+          .map(
+            live => `
+              <div
+                class="class-card"
+                style="
+                  display:flex;
+                  align-items:center;
+                  justify-content:space-between;
+                  gap:15px;
+                  flex-wrap:wrap;
+                "
+              >
+
+                <div>
+
+                  <span
+                    class="badge"
+                    style="
+                      display:inline-block;
+                      margin-bottom:8px;
+                    "
+                  >
+                    🔴 LIVE NOW
+                  </span>
+
+                  <h3>
+                    ${escapeHtml(
+                      live.title
+                    )}
+                  </h3>
+
+                  <p>
+                    ${escapeHtml(
+                      live.classes?.title ||
+                      "Live Class"
+                    )}
+                  </p>
+
+                </div>
+
+                <button
+                  class="primary-btn"
+                  onclick="joinLiveClass('${live.id}')"
+                >
+                  ▶ Join Live
+                </button>
+
+              </div>
+            `
+          )
+          .join("")
+      }
+
+    </div>
+  `);
+}
+
+
+async function joinLiveClass(
+  liveClassId
+) {
+
+  const {
+    data: liveClass,
+    error
+  } =
+    await supabaseClient
+      .from("live_classes")
+      .select(`
+        id,
+        class_id,
+        title,
+        status,
+        classes (
+          id,
+          title
+        )
+      `)
+      .eq(
+        "id",
+        liveClassId
+      )
+      .maybeSingle();
+
+  if (
+    error ||
+    !liveClass
+  ) {
+
+    console.error(
+      "Join live:",
+      error
+    );
+
+    showToast(
+      "Live class not found."
+    );
+
+    return;
+  }
+
+  if (
+    liveClass.status !== "live"
+  ) {
+
+    showToast(
+      "This live class has ended."
+    );
+
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      LIVE CLASS
+    </div>
+
+    <h2>
+      🔴 ${escapeHtml(
+        liveClass.title
+      )}
+    </h2>
+
+    <p>
+      ${escapeHtml(
+        liveClass.classes?.title ||
+        "Live Class"
+      )}
+    </p>
+
+    <div
+      style="
+        margin-top:20px;
+        background:#050b12;
+        border-radius:18px;
+        aspect-ratio:16/9;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
+        padding:20px;
+      "
+    >
+
+      <div>
+
+        <div
+          style="
+            font-size:48px;
+            margin-bottom:10px;
+          "
+        >
+          🔴
+        </div>
+
+        <h3>
+          You're in the live room
+        </h3>
+
+        <p style="color:#9ca3af;">
+          Video connection will be connected next.
+        </p>
+
+      </div>
+
+    </div>
+  `);
+}
+
+
+window.showStudentLiveClasses =
+  showStudentLiveClasses;
+
+window.joinLiveClass =
+  joinLiveClass;
 
 /* =========================================================
    LESSONS
