@@ -2917,10 +2917,55 @@ async function renderClasses() {
 }
 
 /* =========================================================
-   LIVE CLASS
+   LIVE CLASS — LIVEKIT
 ========================================================= */
 
+const LIVEKIT_URL =
+  "wss://smart-academy-7ph2syol.livekit.cloud";
+
+const LIVEKIT_TOKEN_URL =
+  "https://smart-tuisyen-livekit.norizkandarfaizal.workers.dev/token";
+
+let liveRoom = null;
 let livePreviewStream = null;
+
+
+/* =========================================================
+   GET LIVEKIT TOKEN
+========================================================= */
+
+async function getLiveKitToken(roomName) {
+
+  if (!state.user?.id) {
+    throw new Error("You must be logged in.");
+  }
+
+  const identity =
+    `${state.role}-${state.user.id}`;
+
+  const url =
+    `${LIVEKIT_TOKEN_URL}?room=${encodeURIComponent(roomName)}&identity=${encodeURIComponent(identity)}`;
+
+  const response =
+    await fetch(url);
+
+  const result =
+    await response.json();
+
+  if (!response.ok || !result.token) {
+    throw new Error(
+      result.error ||
+      "Unable to get LiveKit token."
+    );
+  }
+
+  return result.token;
+}
+
+
+/* =========================================================
+   START LIVE MODAL — TEACHER
+========================================================= */
 
 function openStartLiveModal(classId) {
 
@@ -3032,6 +3077,10 @@ function openStartLiveModal(classId) {
 }
 
 
+/* =========================================================
+   CAMERA PREVIEW
+========================================================= */
+
 async function startLiveCamera() {
 
   const video =
@@ -3095,6 +3144,10 @@ async function startLiveCamera() {
 }
 
 
+/* =========================================================
+   TEACHER START LIVE
+========================================================= */
+
 async function startLiveClass(classId) {
 
   const title =
@@ -3111,24 +3164,31 @@ async function startLiveClass(classId) {
     );
 
   if (!title) {
-
-    alert(
-      "Please enter a live title."
-    );
-
+    alert("Please enter a live title.");
     return;
   }
 
   if (!state.user?.id) {
+    alert("You must be logged in.");
+    return;
+  }
+
+  if (
+    typeof LivekitClient === "undefined"
+  ) {
 
     alert(
-      "You must be logged in."
+      "LiveKit SDK belum dimuat. Pastikan index.html mempunyai LiveKit script."
     );
 
     return;
   }
 
   try {
+
+    /* -----------------------------------------
+       Create Supabase live class
+    ----------------------------------------- */
 
     const {
       data,
@@ -3172,10 +3232,90 @@ async function startLiveClass(classId) {
       return;
     }
 
-    console.log(
-      "Live started:",
-      data
+
+    /* -----------------------------------------
+       Room name
+    ----------------------------------------- */
+
+    const roomName =
+      `live-class-${data.id}`;
+
+
+    /* -----------------------------------------
+       Get LiveKit token
+    ----------------------------------------- */
+
+    const token =
+      await getLiveKitToken(
+        roomName
+      );
+
+
+    /* -----------------------------------------
+       Connect to LiveKit
+    ----------------------------------------- */
+
+    liveRoom =
+      new LivekitClient.Room({
+
+        adaptiveStream: true,
+
+        dynacast: true
+
+      });
+
+
+    /* -----------------------------------------
+       Room events
+    ----------------------------------------- */
+
+    liveRoom.on(
+      LivekitClient.RoomEvent.TrackSubscribed,
+      (track, publication, participant) => {
+
+        attachLiveTrack(
+          track,
+          participant
+        );
+
+      }
     );
+
+
+    liveRoom.on(
+      LivekitClient.RoomEvent.Disconnected,
+      () => {
+
+        console.log(
+          "Disconnected from LiveKit."
+        );
+
+      }
+    );
+
+
+    /* -----------------------------------------
+       Connect
+    ----------------------------------------- */
+
+    await liveRoom.connect(
+      LIVEKIT_URL,
+      token
+    );
+
+
+    /* -----------------------------------------
+       Publish camera + microphone
+    ----------------------------------------- */
+
+    await liveRoom
+      .localParticipant
+      .enableCameraAndMicrophone();
+
+
+    /* -----------------------------------------
+       Close preview
+    ----------------------------------------- */
 
     if (livePreviewStream) {
 
@@ -3185,11 +3325,22 @@ async function startLiveClass(classId) {
           track => track.stop()
         );
 
-      livePreviewStream =
-        null;
+      livePreviewStream = null;
     }
 
+
     closeModal();
+
+
+    /* -----------------------------------------
+       Show teacher live room
+    ----------------------------------------- */
+
+    openTeacherLiveRoom(
+      data,
+      roomName
+    );
+
 
     showToast(
       "🔴 Live Class started!"
@@ -3198,33 +3349,225 @@ async function startLiveClass(classId) {
   } catch (error) {
 
     console.error(
-      "Live error:",
+      "LiveKit error:",
       error
     );
 
     alert(
-      "Something went wrong."
+      error.message ||
+      "Unable to connect to LiveKit."
     );
+
   }
 }
 
 
-window.openStartLiveModal =
-  openStartLiveModal;
+/* =========================================================
+   TEACHER LIVE ROOM
+========================================================= */
 
-window.startLiveCamera =
-  startLiveCamera;
+function openTeacherLiveRoom(
+  liveClass,
+  roomName
+) {
 
-window.startLiveClass =
-  startLiveClass;
+  openModal(`
+
+    <div class="eyebrow">
+      LIVE CLASS
+    </div>
+
+    <h2>
+      🔴 ${escapeHtml(
+        liveClass.title
+      )}
+    </h2>
+
+    <p>
+      You are live now.
+    </p>
+
+    <div
+      id="liveVideoGrid"
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            auto-fit,
+            minmax(260px, 1fr)
+          );
+        gap:12px;
+        margin-top:20px;
+      "
+    ></div>
+
+    <div style="
+      display:flex;
+      gap:10px;
+      margin-top:18px;
+      flex-wrap:wrap;
+    ">
+
+      <button
+        class="secondary-btn"
+        onclick="leaveLiveClass('${liveClass.id}')"
+      >
+        🚪 Leave Live
+      </button>
+
+    </div>
+
+  `);
+
+  attachLocalLiveVideo();
+}
+
 
 /* =========================================================
-   STUDENT LIVE CLASSES
+   ATTACH LOCAL VIDEO
+========================================================= */
+
+function attachLocalLiveVideo() {
+
+  if (!liveRoom) {
+    return;
+  }
+
+  const grid =
+    document.getElementById(
+      "liveVideoGrid"
+    );
+
+  if (!grid) {
+    return;
+  }
+
+  const existing =
+    document.getElementById(
+      "local-live-video"
+    );
+
+  if (existing) {
+    return;
+  }
+
+  const video =
+    document.createElement(
+      "video"
+    );
+
+  video.id =
+    "local-live-video";
+
+  video.autoplay = true;
+  video.muted = true;
+  video.playsInline = true;
+
+  video.style.width =
+    "100%";
+
+  video.style.aspectRatio =
+    "16/9";
+
+  video.style.objectFit =
+    "cover";
+
+  video.style.borderRadius =
+    "16px";
+
+  video.style.background =
+    "#050b12";
+
+
+  const cameraPublication =
+    Array.from(
+      liveRoom
+        .localParticipant
+        .trackPublications
+        .values()
+    ).find(
+      publication =>
+        publication.kind ===
+        LivekitClient.Track.Kind.Video
+    );
+
+
+  if (
+    cameraPublication &&
+    cameraPublication.track
+  ) {
+
+    video.srcObject =
+      new MediaStream([
+        cameraPublication
+          .track
+          .mediaStreamTrack
+      ]);
+
+  }
+
+
+  grid.appendChild(
+    video
+  );
+}
+
+
+/* =========================================================
+   ATTACH REMOTE TRACK
+========================================================= */
+
+function attachLiveTrack(
+  track,
+  participant
+) {
+
+  const grid =
+    document.getElementById(
+      "liveVideoGrid"
+    );
+
+  if (!grid) {
+    return;
+  }
+
+  const element =
+    track.attach();
+
+  element.id =
+    `participant-${participant.identity}-${track.sid}`;
+
+  element.style.width =
+    "100%";
+
+  element.style.aspectRatio =
+    "16/9";
+
+  element.style.objectFit =
+    "cover";
+
+  element.style.borderRadius =
+    "16px";
+
+  element.style.background =
+    "#050b12";
+
+  grid.appendChild(
+    element
+  );
+}
+
+
+/* =========================================================
+   LOAD ACTIVE LIVE CLASSES
 ========================================================= */
 
 async function loadActiveLiveClasses() {
 
-  const { data, error } =
+  const {
+    data,
+    error
+  } =
     await supabaseClient
       .from("live_classes")
       .select(`
@@ -3240,10 +3583,16 @@ async function loadActiveLiveClasses() {
           teacher_id
         )
       `)
-      .eq("status", "live")
-      .order("starts_at", {
-        ascending: false
-      });
+      .eq(
+        "status",
+        "live"
+      )
+      .order(
+        "starts_at",
+        {
+          ascending: false
+        }
+      );
 
   if (error) {
 
@@ -3258,6 +3607,10 @@ async function loadActiveLiveClasses() {
   return data || [];
 }
 
+
+/* =========================================================
+   STUDENT LIVE LIST
+========================================================= */
 
 async function showStudentLiveClasses() {
 
@@ -3274,6 +3627,7 @@ async function showStudentLiveClasses() {
   }
 
   openModal(`
+
     <div class="eyebrow">
       LIVE CLASSES
     </div>
@@ -3298,6 +3652,7 @@ async function showStudentLiveClasses() {
         liveClasses
           .map(
             live => `
+
               <div
                 class="class-card"
                 style="
@@ -3344,19 +3699,37 @@ async function showStudentLiveClasses() {
                 </button>
 
               </div>
+
             `
           )
           .join("")
       }
 
     </div>
+
   `);
 }
 
 
+/* =========================================================
+   STUDENT JOIN LIVE
+========================================================= */
+
 async function joinLiveClass(
   liveClassId
 ) {
+
+  if (
+    typeof LivekitClient === "undefined"
+  ) {
+
+    alert(
+      "LiveKit SDK belum dimuat."
+    );
+
+    return;
+  }
+
 
   const {
     data: liveClass,
@@ -3380,6 +3753,7 @@ async function joinLiveClass(
       )
       .maybeSingle();
 
+
   if (
     error ||
     !liveClass
@@ -3397,6 +3771,7 @@ async function joinLiveClass(
     return;
   }
 
+
   if (
     liveClass.status !== "live"
   ) {
@@ -3408,7 +3783,161 @@ async function joinLiveClass(
     return;
   }
 
+
+  try {
+
+    /* -----------------------------------------
+       Same room as teacher
+    ----------------------------------------- */
+
+    const roomName =
+      `live-class-${liveClass.id}`;
+
+
+    /* -----------------------------------------
+       Get token
+    ----------------------------------------- */
+
+    const token =
+      await getLiveKitToken(
+        roomName
+      );
+
+
+    /* -----------------------------------------
+       Create room
+    ----------------------------------------- */
+
+    liveRoom =
+      new LivekitClient.Room({
+
+        adaptiveStream: true,
+
+        dynacast: true
+
+      });
+
+
+    /* -----------------------------------------
+       Remote participant video
+    ----------------------------------------- */
+
+    liveRoom.on(
+      LivekitClient.RoomEvent.TrackSubscribed,
+      (
+        track,
+        publication,
+        participant
+      ) => {
+
+        attachLiveTrack(
+          track,
+          participant
+        );
+
+      }
+    );
+
+
+    /* -----------------------------------------
+       Connect
+    ----------------------------------------- */
+
+    await liveRoom.connect(
+      LIVEKIT_URL,
+      token
+    );
+
+
+    /* -----------------------------------------
+       Student UI
+    ----------------------------------------- */
+
+    closeModal();
+
+    openStudentLiveRoom(
+      liveClass
+    );
+
+
+    /* -----------------------------------------
+       Enable student camera + mic
+    ----------------------------------------- */
+
+    try {
+
+      await liveRoom
+        .localParticipant
+        .enableCameraAndMicrophone();
+
+    } catch (mediaError) {
+
+      console.warn(
+        "Student camera/mic unavailable:",
+        mediaError
+      );
+
+    }
+
+
+    /* -----------------------------------------
+       Existing participants
+    ----------------------------------------- */
+
+    liveRoom
+      .remoteParticipants
+      .forEach(
+        participant => {
+
+          participant
+            .trackPublications
+            .forEach(
+              publication => {
+
+                if (
+                  publication.isSubscribed &&
+                  publication.track
+                ) {
+
+                  attachLiveTrack(
+                    publication.track,
+                    participant
+                  );
+
+                }
+
+              }
+            );
+
+        }
+      );
+
+  } catch (error) {
+
+    console.error(
+      "Join LiveKit error:",
+      error
+    );
+
+    alert(
+      error.message ||
+      "Unable to join live class."
+    );
+
+  }
+}
+
+
+/* =========================================================
+   STUDENT LIVE ROOM
+========================================================= */
+
+function openStudentLiveRoom(
+  liveClass
+) {
+
   openModal(`
+
     <div class="eyebrow">
       LIVE CLASS
     </div>
@@ -3427,50 +3956,164 @@ async function joinLiveClass(
     </p>
 
     <div
+      id="liveVideoGrid"
       style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            auto-fit,
+            minmax(260px, 1fr)
+          );
+        gap:12px;
         margin-top:20px;
-        background:#050b12;
-        border-radius:18px;
-        aspect-ratio:16/9;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        text-align:center;
-        padding:20px;
       "
     >
 
-      <div>
-
-        <div
-          style="
-            font-size:48px;
-            margin-bottom:10px;
-          "
-        >
-          🔴
-        </div>
-
-        <h3>
-          You're in the live room
-        </h3>
-
-        <p style="color:#9ca3af;">
-          Video connection will be connected next.
-        </p>
-
+      <div
+        style="
+          min-height:220px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          background:#050b12;
+          border-radius:16px;
+          color:#9ca3af;
+        "
+      >
+        Connecting to teacher...
       </div>
 
     </div>
+
+    <div style="
+      display:flex;
+      gap:10px;
+      margin-top:18px;
+      flex-wrap:wrap;
+    ">
+
+      <button
+        class="secondary-btn"
+        onclick="leaveLiveClass('${liveClass.id}')"
+      >
+        🚪 Leave Live
+      </button>
+
+    </div>
+
   `);
+
 }
 
+
+/* =========================================================
+   LEAVE LIVE
+========================================================= */
+
+async function leaveLiveClass(
+  liveClassId
+) {
+
+  try {
+
+    if (liveRoom) {
+
+      await liveRoom.disconnect();
+
+      liveRoom =
+        null;
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Disconnect error:",
+      error
+    );
+
+  }
+
+
+  /* -----------------------------------------
+     Stop local preview
+  ----------------------------------------- */
+
+  if (livePreviewStream) {
+
+    livePreviewStream
+      .getTracks()
+      .forEach(
+        track => track.stop()
+      );
+
+    livePreviewStream =
+      null;
+  }
+
+
+  /* -----------------------------------------
+     Teacher ends Supabase live
+  ----------------------------------------- */
+
+  if (
+    state.role === "teacher" &&
+    liveClassId
+  ) {
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from("live_classes")
+        .update({
+          status: "ended"
+        })
+        .eq(
+          "id",
+          liveClassId
+        );
+
+    if (error) {
+
+      console.error(
+        "End live error:",
+        error
+      );
+
+    }
+
+  }
+
+
+  closeModal();
+
+  showToast(
+    "Live class ended."
+  );
+}
+
+
+/* =========================================================
+   GLOBAL FUNCTIONS
+========================================================= */
+
+window.openStartLiveModal =
+  openStartLiveModal;
+
+window.startLiveCamera =
+  startLiveCamera;
+
+window.startLiveClass =
+  startLiveClass;
 
 window.showStudentLiveClasses =
   showStudentLiveClasses;
 
 window.joinLiveClass =
   joinLiveClass;
+
+window.leaveLiveClass =
+  leaveLiveClass;
 
 /* =========================================================
    LESSONS
