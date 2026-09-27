@@ -2947,7 +2947,9 @@ async function getLiveKitToken(roomName) {
     `${LIVEKIT_TOKEN_URL}?room=${encodeURIComponent(roomName)}&identity=${encodeURIComponent(identity)}`;
 
   const response =
-    await fetch(url);
+    await fetch(url, {
+      method: "GET"
+    });
 
   const result =
     await response.json();
@@ -3048,18 +3050,16 @@ function openStartLiveModal(classId) {
 
       <button
         class="secondary-btn"
-        onclick="startLiveCamera()">
-
+        onclick="startLiveCamera()"
+      >
         📷 Camera & Mic
-
       </button>
 
       <button
         class="primary-btn"
-        onclick="startLiveClass('${classId}')">
-
+        onclick="startLiveClass('${classId}')"
+      >
         🔴 Start Live
-
       </button>
 
     </div>
@@ -3104,9 +3104,8 @@ async function startLiveCamera() {
 
       livePreviewStream
         .getTracks()
-        .forEach(
-          track => track.stop()
-        );
+        .forEach(track => track.stop());
+
     }
 
     livePreviewStream =
@@ -3122,6 +3121,7 @@ async function startLiveCamera() {
 
       status.innerHTML =
         "🟢 Camera & microphone ready.";
+
     }
 
   } catch (error) {
@@ -3135,11 +3135,13 @@ async function startLiveCamera() {
 
       status.innerHTML =
         "❌ Camera atau microphone tidak dapat digunakan.";
+
     }
 
     alert(
       "Please allow camera and microphone permission."
     );
+
   }
 }
 
@@ -3252,7 +3254,7 @@ async function startLiveClass(classId) {
 
 
     /* -----------------------------------------
-       Connect to LiveKit
+       Create LiveKit room
     ----------------------------------------- */
 
     liveRoom =
@@ -3266,7 +3268,7 @@ async function startLiveClass(classId) {
 
 
     /* -----------------------------------------
-       Room events
+       Remote tracks
     ----------------------------------------- */
 
     liveRoom.on(
@@ -3277,6 +3279,16 @@ async function startLiveClass(classId) {
           track,
           participant
         );
+
+      }
+    );
+
+
+    liveRoom.on(
+      LivekitClient.RoomEvent.TrackUnsubscribed,
+      (track) => {
+
+        track.detach();
 
       }
     );
@@ -3305,7 +3317,7 @@ async function startLiveClass(classId) {
 
 
     /* -----------------------------------------
-       Publish camera + microphone
+       Publish teacher camera + microphone
     ----------------------------------------- */
 
     await liveRoom
@@ -3314,32 +3326,46 @@ async function startLiveClass(classId) {
 
 
     /* -----------------------------------------
-       Close preview
+       Stop preview
     ----------------------------------------- */
 
     if (livePreviewStream) {
 
       livePreviewStream
         .getTracks()
-        .forEach(
-          track => track.stop()
-        );
+        .forEach(track => track.stop());
 
       livePreviewStream = null;
+
     }
 
+
+    /* -----------------------------------------
+       Close start modal
+    ----------------------------------------- */
 
     closeModal();
 
 
     /* -----------------------------------------
-       Show teacher live room
+       Open teacher room
     ----------------------------------------- */
 
     openTeacherLiveRoom(
       data,
       roomName
     );
+
+
+    /* -----------------------------------------
+       Attach local video
+    ----------------------------------------- */
+
+    setTimeout(() => {
+
+      attachLocalLiveVideo();
+
+    }, 100);
 
 
     showToast(
@@ -3378,9 +3404,7 @@ function openTeacherLiveRoom(
     </div>
 
     <h2>
-      🔴 ${escapeHtml(
-        liveClass.title
-      )}
+      🔴 ${escapeHtml(liveClass.title)}
     </h2>
 
     <p>
@@ -3419,7 +3443,11 @@ function openTeacherLiveRoom(
 
   `);
 
-  attachLocalLiveVideo();
+  setTimeout(() => {
+
+    attachLocalLiveVideo();
+
+  }, 50);
 }
 
 
@@ -3442,41 +3470,44 @@ function attachLocalLiveVideo() {
     return;
   }
 
-  const existing =
+  let video =
     document.getElementById(
       "local-live-video"
     );
 
-  if (existing) {
-    return;
-  }
+  if (!video) {
 
-  const video =
-    document.createElement(
-      "video"
+    video =
+      document.createElement(
+        "video"
+      );
+
+    video.id =
+      "local-live-video";
+
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+
+    video.style.width =
+      "100%";
+
+    video.style.aspectRatio =
+      "16/9";
+
+    video.style.objectFit =
+      "cover";
+
+    video.style.borderRadius =
+      "16px";
+
+    video.style.background =
+      "#050b12";
+
+    grid.appendChild(
+      video
     );
-
-  video.id =
-    "local-live-video";
-
-  video.autoplay = true;
-  video.muted = true;
-  video.playsInline = true;
-
-  video.style.width =
-    "100%";
-
-  video.style.aspectRatio =
-    "16/9";
-
-  video.style.objectFit =
-    "cover";
-
-  video.style.borderRadius =
-    "16px";
-
-  video.style.background =
-    "#050b12";
+  }
 
 
   const cameraPublication =
@@ -3497,19 +3528,21 @@ function attachLocalLiveVideo() {
     cameraPublication.track
   ) {
 
-    video.srcObject =
-      new MediaStream([
-        cameraPublication
-          .track
-          .mediaStreamTrack
-      ]);
+    const track =
+      cameraPublication.track;
+
+    if (
+      track.mediaStreamTrack
+    ) {
+
+      video.srcObject =
+        new MediaStream([
+          track.mediaStreamTrack
+        ]);
+
+    }
 
   }
-
-
-  grid.appendChild(
-    video
-  );
 }
 
 
@@ -3531,11 +3564,25 @@ function attachLiveTrack(
     return;
   }
 
+
+  const existing =
+    document.getElementById(
+      `participant-${participant.identity}-${track.sid}`
+    );
+
+  if (existing) {
+    return;
+  }
+
+
   const element =
     track.attach();
 
   element.id =
     `participant-${participant.identity}-${track.sid}`;
+
+  element.autoplay = true;
+  element.playsInline = true;
 
   element.style.width =
     "100%";
@@ -3819,7 +3866,7 @@ async function joinLiveClass(
 
 
     /* -----------------------------------------
-       Remote participant video
+       Remote track event
     ----------------------------------------- */
 
     liveRoom.on(
@@ -3839,6 +3886,28 @@ async function joinLiveClass(
     );
 
 
+    liveRoom.on(
+      LivekitClient.RoomEvent.TrackUnsubscribed,
+      (track) => {
+
+        track.detach();
+
+      }
+    );
+
+
+    liveRoom.on(
+      LivekitClient.RoomEvent.Disconnected,
+      () => {
+
+        console.log(
+          "Student disconnected from LiveKit."
+        );
+
+      }
+    );
+
+
     /* -----------------------------------------
        Connect
     ----------------------------------------- */
@@ -3850,10 +3919,15 @@ async function joinLiveClass(
 
 
     /* -----------------------------------------
-       Student UI
+       Close list modal
     ----------------------------------------- */
 
     closeModal();
+
+
+    /* -----------------------------------------
+       Open student room
+    ----------------------------------------- */
 
     openStudentLiveRoom(
       liveClass
@@ -3881,7 +3955,7 @@ async function joinLiveClass(
 
 
     /* -----------------------------------------
-       Existing participants
+       Attach existing teacher tracks
     ----------------------------------------- */
 
     liveRoom
@@ -3911,6 +3985,18 @@ async function joinLiveClass(
 
         }
       );
+
+
+    /* -----------------------------------------
+       Attach student local video
+    ----------------------------------------- */
+
+    setTimeout(() => {
+
+      attachLocalLiveVideo();
+
+    }, 100);
+
 
   } catch (error) {
 
@@ -3970,6 +4056,7 @@ function openStudentLiveRoom(
     >
 
       <div
+        id="liveConnectingMessage"
         style="
           min-height:220px;
           display:flex;
@@ -4020,8 +4107,8 @@ async function leaveLiveClass(
 
       await liveRoom.disconnect();
 
-      liveRoom =
-        null;
+      liveRoom = null;
+
     }
 
   } catch (error) {
@@ -4035,19 +4122,17 @@ async function leaveLiveClass(
 
 
   /* -----------------------------------------
-     Stop local preview
+     Stop preview
   ----------------------------------------- */
 
   if (livePreviewStream) {
 
     livePreviewStream
       .getTracks()
-      .forEach(
-        track => track.stop()
-      );
+      .forEach(track => track.stop());
 
-    livePreviewStream =
-      null;
+    livePreviewStream = null;
+
   }
 
 
@@ -4114,6 +4199,11 @@ window.joinLiveClass =
 
 window.leaveLiveClass =
   leaveLiveClass;
+
+
+/* =========================================================
+   LESSONS
+========================================================= */
 
 /* =========================================================
    LESSONS
