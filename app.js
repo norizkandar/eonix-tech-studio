@@ -2909,6 +2909,309 @@ async function renderClasses() {
 }
 
 /* =========================================================
+   LIVE CLASS
+========================================================= */
+
+let livePreviewStream = null;
+
+function openStartLiveModal(classId) {
+
+  const selectedClass =
+    (state.classes || []).find(
+      c => String(c.id) === String(classId)
+    );
+
+  if (!selectedClass) {
+    alert("Class not found.");
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">
+      LIVE CLASS
+    </div>
+
+    <h2>
+      Start Live Class
+    </h2>
+
+    <p>
+      ${escapeHtml(selectedClass.title)}
+    </p>
+
+    <div style="
+      margin-top:20px;
+      background:#050b12;
+      border-radius:18px;
+      overflow:hidden;
+      aspect-ratio:16/9;
+    ">
+
+      <video
+        id="livePreviewVideo"
+        autoplay
+        muted
+        playsinline
+        style="
+          width:100%;
+          height:100%;
+          object-fit:cover;
+          display:block;
+        "
+      ></video>
+
+    </div>
+
+    <div style="
+      display:grid;
+      gap:12px;
+      margin-top:18px;
+    ">
+
+      <input
+        id="liveTitleInput"
+        class="input"
+        placeholder="Live title"
+        value="${escapeHtml(selectedClass.title)}"
+      >
+
+      <input
+        id="liveDurationInput"
+        class="input"
+        type="number"
+        min="1"
+        value="60"
+        placeholder="Duration in minutes"
+      >
+
+    </div>
+
+    <div style="
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:18px;
+    ">
+
+      <button
+        class="secondary-btn"
+        onclick="startLiveCamera()">
+
+        📷 Camera & Mic
+
+      </button>
+
+      <button
+        class="primary-btn"
+        onclick="startLiveClass('${classId}')">
+
+        🔴 Start Live
+
+      </button>
+
+    </div>
+
+    <p
+      id="liveCameraStatus"
+      style="
+        margin-top:12px;
+        color:#9ca3af;
+      "
+    >
+      Camera and microphone belum dimulakan.
+    </p>
+  `);
+}
+
+
+async function startLiveCamera() {
+
+  const video =
+    document.getElementById(
+      "livePreviewVideo"
+    );
+
+  const status =
+    document.getElementById(
+      "liveCameraStatus"
+    );
+
+  if (!video) {
+    alert("Video preview not found.");
+    return;
+  }
+
+  try {
+
+    if (livePreviewStream) {
+
+      livePreviewStream
+        .getTracks()
+        .forEach(
+          track => track.stop()
+        );
+    }
+
+    livePreviewStream =
+      await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+
+    video.srcObject =
+      livePreviewStream;
+
+    if (status) {
+
+      status.innerHTML =
+        "🟢 Camera & microphone ready.";
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Camera/Mic error:",
+      error
+    );
+
+    if (status) {
+
+      status.innerHTML =
+        "❌ Camera atau microphone tidak dapat digunakan.";
+    }
+
+    alert(
+      "Please allow camera and microphone permission."
+    );
+  }
+}
+
+
+async function startLiveClass(classId) {
+
+  const title =
+    document
+      .getElementById("liveTitleInput")
+      ?.value
+      .trim();
+
+  const duration =
+    Number(
+      document
+        .getElementById("liveDurationInput")
+        ?.value || 60
+    );
+
+  if (!title) {
+
+    alert(
+      "Please enter a live title."
+    );
+
+    return;
+  }
+
+  if (!state.user?.id) {
+
+    alert(
+      "You must be logged in."
+    );
+
+    return;
+  }
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("live_classes")
+        .insert({
+
+          class_id: classId,
+
+          teacher_id:
+            state.user.id,
+
+          title: title,
+
+          starts_at:
+            new Date().toISOString(),
+
+          duration_minutes:
+            duration,
+
+          status: "live"
+
+        })
+        .select()
+        .single();
+
+    if (error) {
+
+      console.error(
+        "Start live error:",
+        error
+      );
+
+      alert(
+        error.message ||
+        "Unable to start live."
+      );
+
+      return;
+    }
+
+    console.log(
+      "Live started:",
+      data
+    );
+
+    if (livePreviewStream) {
+
+      livePreviewStream
+        .getTracks()
+        .forEach(
+          track => track.stop()
+        );
+
+      livePreviewStream =
+        null;
+    }
+
+    closeModal();
+
+    showToast(
+      "🔴 Live Class started!"
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Live error:",
+      error
+    );
+
+    alert(
+      "Something went wrong."
+    );
+  }
+}
+
+
+window.openStartLiveModal =
+  openStartLiveModal;
+
+window.startLiveCamera =
+  startLiveCamera;
+
+window.startLiveClass =
+  startLiveClass;
+
+
+/* =========================================================
    LESSONS
 ========================================================= */
 
