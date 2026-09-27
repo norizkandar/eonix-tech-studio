@@ -2882,13 +2882,21 @@ async function renderClasses() {
 
                     </button>
 
+                    <button
+                      class="primary-btn"
+                      onclick="openStartLiveModal('${c.id}')">
+
+                     🔴 Start Live
+
+                    </button>
+
                     <span class="badge">
                       ${
-                        c.is_published
-                          ? "Published"
-                          : "Draft"
-                      }
-                    </span>
+                       c.is_published
+                        ? "Published"
+                        : "Draft"
+                          }
+                   </span>
                   `
               }
 
