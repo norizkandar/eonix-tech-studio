@@ -3367,7 +3367,8 @@ async function startLiveClass(classId) {
 
     }, 100);
 
-
+ 
+    
     showToast(
       "🔴 Live Class started!"
     );
@@ -3387,6 +3388,71 @@ async function startLiveClass(classId) {
   }
 }
 
+/* =========================================================
+   SHARE SCREEN — TEACHER
+========================================================= */
+
+async function toggleScreenShare() {
+
+  if (!liveRoom) {
+    alert("You are not connected to a live class.");
+    return;
+  }
+
+  if (state.role !== "teacher") {
+    alert("Only the teacher can share screen.");
+    return;
+  }
+
+  try {
+
+    const screenPublication =
+      Array.from(
+        liveRoom.localParticipant.trackPublications.values()
+      ).find(
+        publication =>
+          publication.source ===
+          LivekitClient.Track.Source.ScreenShare
+      );
+
+    if (screenPublication) {
+
+      await liveRoom.localParticipant.setScreenShareEnabled(false);
+
+      showToast("🛑 Screen sharing stopped.");
+
+      return;
+    }
+
+    await liveRoom.localParticipant.setScreenShareEnabled(true);
+
+    showToast("🖥️ Screen sharing started.");
+
+  } catch (error) {
+
+    console.error(
+      "Screen share error:",
+      error
+    );
+
+    if (
+      error.name === "NotAllowedError"
+    ) {
+
+      showToast(
+        "Screen sharing cancelled."
+      );
+
+      return;
+    }
+
+    alert(
+      error.message ||
+      "Unable to share screen."
+    );
+
+  }
+}
 
 /* =========================================================
    TEACHER LIVE ROOM
