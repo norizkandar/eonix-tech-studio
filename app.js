@@ -3505,6 +3505,13 @@ function openTeacherLiveRoom(
         🚪 Leave Live
       </button>
 
+      <button
+        class="primary-btn"
+        onclick="toggleScreenShare()"
+      >
+        🖥️ Share Screen
+      </button>
+
     </div>
 
   `);
@@ -4266,10 +4273,9 @@ window.joinLiveClass =
 window.leaveLiveClass =
   leaveLiveClass;
 
+window.toggleScreenShare =
+  toggleScreenShare;
 
-/* =========================================================
-   LESSONS
-========================================================= */
 
 /* =========================================================
    LESSONS
