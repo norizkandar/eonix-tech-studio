@@ -898,122 +898,151 @@ async function renderTeacherHome() {
    TEACHER EARNINGS
 ========================================================= */
 
-async function renderTeacherEarnings() {
-  if (!state.user) return;
+async function renderEarnings() {
+  if (!state.user || state.role !== "teacher") {
+    $("#content").innerHTML = `
+      <div class="empty">
+        <h3>Earnings unavailable</h3>
+        <p>Only teacher accounts can view earnings.</p>
+      </div>
+    `;
+    return;
+  }
 
-  const { data: transactions, error } =
-    await supabaseClient
-      .from("transactions")
-      .select(`
-        id,
-        amount,
-        currency,
-        status,
-        description,
-        created_at,
-        class_id,
-        student_id,
-        classes (
-          title
-        ),
-        profiles:student_id (
-          full_name
-        )
-      `)
-      .eq("teacher_id", state.user.id)
-      .order("created_at", {
-        ascending: false
-      });
+  const {
+    data: transactions,
+    error
+  } = await supabaseClient
+    .from("transactions")
+    .select(`
+      id,
+      amount,
+      currency,
+      status,
+      description,
+      created_at,
+      class_id,
+      student_id
+    `)
+    .eq("teacher_id", state.user.id)
+    .order("created_at", {
+      ascending: false
+    });
 
   if (error) {
-    console.error("Earnings error:", error);
+    console.error(
+      "Earnings error:",
+      error
+    );
+
     $("#content").innerHTML = `
       <div class="empty">
         <h3>Unable to load earnings</h3>
         <p>${escapeHtml(error.message)}</p>
       </div>
     `;
+
     return;
   }
 
-  const allTransactions = transactions || [];
+  const records =
+    transactions || [];
 
-  const paidTransactions =
-    allTransactions.filter(
-      (item) => item.status === "paid"
+  const paidRecords =
+    records.filter(
+      (item) =>
+        item.status === "paid"
+    );
+
+  const pendingRecords =
+    records.filter(
+      (item) =>
+        item.status === "pending"
+    );
+
+  const refundedRecords =
+    records.filter(
+      (item) =>
+        item.status === "refunded"
     );
 
   const totalEarnings =
-    paidTransactions.reduce(
-      (total, item) =>
-        total + Number(item.amount || 0),
+    paidRecords.reduce(
+      (sum, item) =>
+        sum +
+        Number(item.amount || 0),
       0
     );
 
-  const currentMonth =
-    new Date().getMonth();
+  const pendingAmount =
+    pendingRecords.reduce(
+      (sum, item) =>
+        sum +
+        Number(item.amount || 0),
+      0
+    );
 
-  const currentYear =
-    new Date().getFullYear();
+  const refundedAmount =
+    refundedRecords.reduce(
+      (sum, item) =>
+        sum +
+        Number(item.amount || 0),
+      0
+    );
+
+  const now =
+    new Date();
 
   const monthlyEarnings =
-    paidTransactions
+    paidRecords
       .filter((item) => {
         const date =
-          new Date(item.created_at);
+          new Date(
+            item.created_at
+          );
 
         return (
-          date.getMonth() === currentMonth &&
-          date.getFullYear() === currentYear
+          date.getMonth() ===
+            now.getMonth() &&
+          date.getFullYear() ===
+            now.getFullYear()
         );
       })
       .reduce(
-        (total, item) =>
-          total + Number(item.amount || 0),
+        (sum, item) =>
+          sum +
+          Number(item.amount || 0),
         0
       );
 
-  const pendingAmount =
-    allTransactions
-      .filter(
-        (item) => item.status === "pending"
-      )
-      .reduce(
-        (total, item) =>
-          total + Number(item.amount || 0),
-        0
+  const formatRM =
+    (amount) =>
+      `RM ${Number(
+        amount || 0
+      ).toFixed(2)}`;
+
+  const formatDate =
+    (value) => {
+      if (!value) return "-";
+
+      return new Date(
+        value
+      ).toLocaleDateString(
+        "en-MY",
+        {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        }
       );
-
-  const refundedAmount =
-    allTransactions
-      .filter(
-        (item) => item.status === "refunded"
-      )
-      .reduce(
-        (total, item) =>
-          total + Number(item.amount || 0),
-        0
-      );
-
-  const formatRM = (amount) =>
-    `RM ${Number(amount || 0).toFixed(2)}`;
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-
-    return new Date(dateString).toLocaleDateString(
-      "en-MY",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric"
-      }
-    );
-  };
+    };
 
   $("#content").innerHTML = `
+
     <div class="page-head">
+
       <div>
+
         <div class="eyebrow">
           TEACHER EARNINGS
         </div>
@@ -1023,54 +1052,83 @@ async function renderTeacherEarnings() {
         </h1>
 
         <p>
-          Track your tuition income and payment activity.
+          Track your tuition income and payment records.
         </p>
+
       </div>
+
     </div>
+
 
     <div class="stats-grid">
 
       <div class="stat-card">
+
         <span>💰</span>
+
         <strong>
-          ${formatRM(totalEarnings)}
+          ${formatRM(
+            totalEarnings
+          )}
         </strong>
+
         <small>
           Total Earnings
         </small>
+
       </div>
 
+
       <div class="stat-card">
+
         <span>📅</span>
+
         <strong>
-          ${formatRM(monthlyEarnings)}
+          ${formatRM(
+            monthlyEarnings
+          )}
         </strong>
+
         <small>
           This Month
         </small>
+
       </div>
 
+
       <div class="stat-card">
+
         <span>💳</span>
+
         <strong>
-          ${paidTransactions.length}
+          ${paidRecords.length}
         </strong>
+
         <small>
           Paid Transactions
         </small>
+
       </div>
 
+
       <div class="stat-card">
+
         <span>⏳</span>
+
         <strong>
-          ${formatRM(pendingAmount)}
+          ${formatRM(
+            pendingAmount
+          )}
         </strong>
+
         <small>
           Pending
         </small>
+
       </div>
 
     </div>
+
 
     <div class="panel">
 
@@ -1079,21 +1137,23 @@ async function renderTeacherEarnings() {
         justify-content:space-between;
         align-items:center;
         gap:12px;
-        margin-bottom:18px;
         flex-wrap:wrap;
+        margin-bottom:18px;
       ">
 
         <div>
+
           <h2 style="margin:0;">
             Recent Earnings
           </h2>
 
           <p style="
             margin:6px 0 0;
-            opacity:.7;
+            opacity:.65;
           ">
-            Your latest payment records.
+            Latest payment records
           </p>
+
         </div>
 
         <div style="
@@ -1101,119 +1161,113 @@ async function renderTeacherEarnings() {
           border-radius:12px;
           background:rgba(0,200,255,.08);
         ">
+
           <strong>
-            ${formatRM(totalEarnings)}
+            ${formatRM(
+              totalEarnings
+            )}
           </strong>
+
         </div>
 
       </div>
 
+
       ${
-        allTransactions.length
+        records.length
           ? `
+
             <div style="
               display:flex;
               flex-direction:column;
               gap:12px;
             ">
 
-              ${allTransactions
-                .map((transaction) => {
+              ${records
+                .map(
+                  (item) => {
 
-                  const status =
-                    transaction.status || "pending";
+                    const status =
+                      item.status ||
+                      "pending";
 
-                  const statusIcon =
-                    status === "paid"
-                      ? "🟢"
-                      : status === "pending"
-                      ? "🟡"
-                      : "🔴";
+                    const icon =
+                      status ===
+                      "paid"
+                        ? "🟢"
+                        : status ===
+                          "pending"
+                        ? "🟡"
+                        : "🔴";
 
-                  const className =
-                    transaction.classes?.title ||
-                    "Tuition Class";
+                    return `
 
-                  const studentName =
-                    transaction.profiles?.full_name ||
-                    "Student";
+                      <div
+                        class="list-item"
+                        style="
+                          display:flex;
+                          justify-content:space-between;
+                          align-items:center;
+                          gap:15px;
+                          flex-wrap:wrap;
+                        "
+                      >
 
-                  return `
-                    <div style="
-                      display:flex;
-                      justify-content:space-between;
-                      align-items:center;
-                      gap:16px;
-                      padding:16px;
-                      border-radius:16px;
-                      background:rgba(255,255,255,.04);
-                      border:1px solid rgba(255,255,255,.07);
-                      flex-wrap:wrap;
-                    ">
+                        <div>
 
-                      <div style="
-                        display:flex;
-                        flex-direction:column;
-                        gap:5px;
-                      ">
+                          <strong>
+                            ${escapeHtml(
+                              item.description ||
+                              "Tuition Payment"
+                            )}
+                          </strong>
 
-                        <strong>
-                          ${escapeHtml(className)}
-                        </strong>
+                          <br>
 
-                        <span style="
-                          opacity:.65;
-                          font-size:13px;
-                        ">
-                          ${escapeHtml(studentName)}
-                        </span>
+                          <small>
+                            ${formatDate(
+                              item.created_at
+                            )}
+                          </small>
 
-                        <span style="
-                          opacity:.55;
-                          font-size:12px;
-                        ">
-                          ${formatDate(
-                            transaction.created_at
-                          )}
-                        </span>
+                        </div>
 
-                      </div>
-
-                      <div style="
-                        text-align:right;
-                      ">
-
-                        <strong style="
-                          font-size:18px;
-                        ">
-                          ${formatRM(
-                            transaction.amount
-                          )}
-                        </strong>
 
                         <div style="
-                          margin-top:4px;
-                          font-size:12px;
+                          text-align:right;
                         ">
-                          ${statusIcon}
-                          ${escapeHtml(
-                            status
-                              .charAt(0)
-                              .toUpperCase() +
-                            status.slice(1)
-                          )}
+
+                          <strong style="
+                            font-size:18px;
+                          ">
+                            ${formatRM(
+                              item.amount
+                            )}
+                          </strong>
+
+                          <br>
+
+                          <small>
+                            ${icon}
+                            ${escapeHtml(
+                              status
+                            )}
+                          </small>
+
                         </div>
 
                       </div>
 
-                    </div>
-                  `;
-                })
+                    `;
+                  }
+                )
                 .join("")}
 
             </div>
+
           `
           : `
+
             <div class="empty">
 
               <div style="
@@ -1228,35 +1282,43 @@ async function renderTeacherEarnings() {
               </h3>
 
               <p>
-                Your payment records will appear here.
+                Payment records will appear here.
               </p>
 
             </div>
+
           `
       }
 
     </div>
 
+
     ${
       refundedAmount > 0
         ? `
-          <div class="panel" style="margin-top:18px;">
+
+          <div class="panel"
+            style="margin-top:18px;">
 
             <h3>
               Refunded
             </h3>
 
-            <p style="opacity:.7;">
+            <p>
               Total refunded:
               <strong>
-                ${formatRM(refundedAmount)}
+                ${formatRM(
+                  refundedAmount
+                )}
               </strong>
             </p>
 
           </div>
+
         `
         : ""
     }
+
   `;
 }
 
