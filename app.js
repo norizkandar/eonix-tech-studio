@@ -895,6 +895,372 @@ async function renderTeacherHome() {
 }
 
 /* =========================================================
+   TEACHER EARNINGS
+========================================================= */
+
+async function renderTeacherEarnings() {
+  if (!state.user) return;
+
+  const { data: transactions, error } =
+    await supabaseClient
+      .from("transactions")
+      .select(`
+        id,
+        amount,
+        currency,
+        status,
+        description,
+        created_at,
+        class_id,
+        student_id,
+        classes (
+          title
+        ),
+        profiles:student_id (
+          full_name
+        )
+      `)
+      .eq("teacher_id", state.user.id)
+      .order("created_at", {
+        ascending: false
+      });
+
+  if (error) {
+    console.error("Earnings error:", error);
+    $("#content").innerHTML = `
+      <div class="empty">
+        <h3>Unable to load earnings</h3>
+        <p>${escapeHtml(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  const allTransactions = transactions || [];
+
+  const paidTransactions =
+    allTransactions.filter(
+      (item) => item.status === "paid"
+    );
+
+  const totalEarnings =
+    paidTransactions.reduce(
+      (total, item) =>
+        total + Number(item.amount || 0),
+      0
+    );
+
+  const currentMonth =
+    new Date().getMonth();
+
+  const currentYear =
+    new Date().getFullYear();
+
+  const monthlyEarnings =
+    paidTransactions
+      .filter((item) => {
+        const date =
+          new Date(item.created_at);
+
+        return (
+          date.getMonth() === currentMonth &&
+          date.getFullYear() === currentYear
+        );
+      })
+      .reduce(
+        (total, item) =>
+          total + Number(item.amount || 0),
+        0
+      );
+
+  const pendingAmount =
+    allTransactions
+      .filter(
+        (item) => item.status === "pending"
+      )
+      .reduce(
+        (total, item) =>
+          total + Number(item.amount || 0),
+        0
+      );
+
+  const refundedAmount =
+    allTransactions
+      .filter(
+        (item) => item.status === "refunded"
+      )
+      .reduce(
+        (total, item) =>
+          total + Number(item.amount || 0),
+        0
+      );
+
+  const formatRM = (amount) =>
+    `RM ${Number(amount || 0).toFixed(2)}`;
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+
+    return new Date(dateString).toLocaleDateString(
+      "en-MY",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }
+    );
+  };
+
+  $("#content").innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">
+          TEACHER EARNINGS
+        </div>
+
+        <h1>
+          Earnings
+        </h1>
+
+        <p>
+          Track your tuition income and payment activity.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+
+      <div class="stat-card">
+        <span>💰</span>
+        <strong>
+          ${formatRM(totalEarnings)}
+        </strong>
+        <small>
+          Total Earnings
+        </small>
+      </div>
+
+      <div class="stat-card">
+        <span>📅</span>
+        <strong>
+          ${formatRM(monthlyEarnings)}
+        </strong>
+        <small>
+          This Month
+        </small>
+      </div>
+
+      <div class="stat-card">
+        <span>💳</span>
+        <strong>
+          ${paidTransactions.length}
+        </strong>
+        <small>
+          Paid Transactions
+        </small>
+      </div>
+
+      <div class="stat-card">
+        <span>⏳</span>
+        <strong>
+          ${formatRM(pendingAmount)}
+        </strong>
+        <small>
+          Pending
+        </small>
+      </div>
+
+    </div>
+
+    <div class="panel">
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:12px;
+        margin-bottom:18px;
+        flex-wrap:wrap;
+      ">
+
+        <div>
+          <h2 style="margin:0;">
+            Recent Earnings
+          </h2>
+
+          <p style="
+            margin:6px 0 0;
+            opacity:.7;
+          ">
+            Your latest payment records.
+          </p>
+        </div>
+
+        <div style="
+          padding:10px 14px;
+          border-radius:12px;
+          background:rgba(0,200,255,.08);
+        ">
+          <strong>
+            ${formatRM(totalEarnings)}
+          </strong>
+        </div>
+
+      </div>
+
+      ${
+        allTransactions.length
+          ? `
+            <div style="
+              display:flex;
+              flex-direction:column;
+              gap:12px;
+            ">
+
+              ${allTransactions
+                .map((transaction) => {
+
+                  const status =
+                    transaction.status || "pending";
+
+                  const statusIcon =
+                    status === "paid"
+                      ? "🟢"
+                      : status === "pending"
+                      ? "🟡"
+                      : "🔴";
+
+                  const className =
+                    transaction.classes?.title ||
+                    "Tuition Class";
+
+                  const studentName =
+                    transaction.profiles?.full_name ||
+                    "Student";
+
+                  return `
+                    <div style="
+                      display:flex;
+                      justify-content:space-between;
+                      align-items:center;
+                      gap:16px;
+                      padding:16px;
+                      border-radius:16px;
+                      background:rgba(255,255,255,.04);
+                      border:1px solid rgba(255,255,255,.07);
+                      flex-wrap:wrap;
+                    ">
+
+                      <div style="
+                        display:flex;
+                        flex-direction:column;
+                        gap:5px;
+                      ">
+
+                        <strong>
+                          ${escapeHtml(className)}
+                        </strong>
+
+                        <span style="
+                          opacity:.65;
+                          font-size:13px;
+                        ">
+                          ${escapeHtml(studentName)}
+                        </span>
+
+                        <span style="
+                          opacity:.55;
+                          font-size:12px;
+                        ">
+                          ${formatDate(
+                            transaction.created_at
+                          )}
+                        </span>
+
+                      </div>
+
+                      <div style="
+                        text-align:right;
+                      ">
+
+                        <strong style="
+                          font-size:18px;
+                        ">
+                          ${formatRM(
+                            transaction.amount
+                          )}
+                        </strong>
+
+                        <div style="
+                          margin-top:4px;
+                          font-size:12px;
+                        ">
+                          ${statusIcon}
+                          ${escapeHtml(
+                            status
+                              .charAt(0)
+                              .toUpperCase() +
+                            status.slice(1)
+                          )}
+                        </div>
+
+                      </div>
+
+                    </div>
+                  `;
+                })
+                .join("")}
+
+            </div>
+          `
+          : `
+            <div class="empty">
+
+              <div style="
+                font-size:42px;
+                margin-bottom:10px;
+              ">
+                💰
+              </div>
+
+              <h3>
+                No earnings yet
+              </h3>
+
+              <p>
+                Your payment records will appear here.
+              </p>
+
+            </div>
+          `
+      }
+
+    </div>
+
+    ${
+      refundedAmount > 0
+        ? `
+          <div class="panel" style="margin-top:18px;">
+
+            <h3>
+              Refunded
+            </h3>
+
+            <p style="opacity:.7;">
+              Total refunded:
+              <strong>
+                ${formatRM(refundedAmount)}
+              </strong>
+            </p>
+
+          </div>
+        `
+        : ""
+    }
+  `;
+}
+
+/* =========================================================
    QUIZ
 ========================================================= */
 
