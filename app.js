@@ -909,10 +909,7 @@ async function renderEarnings() {
     return;
   }
 
-  const {
-    data: transactions,
-    error
-  } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("transactions")
     .select(`
       id,
@@ -920,9 +917,7 @@ async function renderEarnings() {
       currency,
       status,
       description,
-      created_at,
-      class_id,
-      student_id
+      created_at
     `)
     .eq("teacher_id", state.user.id)
     .order("created_at", {
@@ -930,10 +925,7 @@ async function renderEarnings() {
     });
 
   if (error) {
-    console.error(
-      "Earnings error:",
-      error
-    );
+    console.error("Earnings error:", error);
 
     $("#content").innerHTML = `
       <div class="empty">
@@ -945,104 +937,113 @@ async function renderEarnings() {
     return;
   }
 
-  const records =
-    transactions || [];
+  const transactions = data || [];
 
-  const paidRecords =
-    records.filter(
-      (item) =>
-        item.status === "paid"
+  let total = 0;
+  let thisMonth = 0;
+  let paidCount = 0;
+  let pending = 0;
+
+  const now = new Date();
+
+  transactions.forEach((item) => {
+    const amount = Number(item.amount || 0);
+
+    if (item.status === "paid") {
+      total += amount;
+      paidCount++;
+
+      const date = new Date(item.created_at);
+
+      if (
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      ) {
+        thisMonth += amount;
+      }
+    }
+
+    if (item.status === "pending") {
+      pending += amount;
+    }
+  });
+
+  const money = (amount) =>
+    `RM ${amount.toFixed(2)}`;
+
+  const dateText = (value) => {
+    if (!value) return "-";
+
+    return new Date(value).toLocaleDateString(
+      "en-MY",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+      }
     );
+  };
 
-  const pendingRecords =
-    records.filter(
-      (item) =>
-        item.status === "pending"
-    );
+  const transactionHTML = transactions
+    .map((item) => {
+      const status = item.status || "pending";
 
-  const refundedRecords =
-    records.filter(
-      (item) =>
-        item.status === "refunded"
-    );
+      const icon =
+        status === "paid"
+          ? "🟢"
+          : status === "pending"
+          ? "🟡"
+          : "🔴";
 
-  const totalEarnings =
-    paidRecords.reduce(
-      (sum, item) =>
-        sum +
-        Number(item.amount || 0),
-      0
-    );
+      return `
+        <div class="list-item"
+          style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            flex-wrap:wrap;
+          "
+        >
 
-  const pendingAmount =
-    pendingRecords.reduce(
-      (sum, item) =>
-        sum +
-        Number(item.amount || 0),
-      0
-    );
+          <div>
+            <strong>
+              ${escapeHtml(
+                item.description ||
+                "Tuition Payment"
+              )}
+            </strong>
 
-  const refundedAmount =
-    refundedRecords.reduce(
-      (sum, item) =>
-        sum +
-        Number(item.amount || 0),
-      0
-    );
+            <br>
 
-  const now =
-    new Date();
+            <small>
+              ${dateText(item.created_at)}
+            </small>
+          </div>
 
-  const monthlyEarnings =
-    paidRecords
-      .filter((item) => {
-        const date =
-          new Date(
-            item.created_at
-          );
+          <div style="text-align:right;">
 
-        return (
-          date.getMonth() ===
-            now.getMonth() &&
-          date.getFullYear() ===
-            now.getFullYear()
-        );
-      })
-      .reduce(
-        (sum, item) =>
-          sum +
-          Number(item.amount || 0),
-        0
-      );
+            <strong style="font-size:18px;">
+              ${money(Number(item.amount || 0))}
+            </strong>
 
-  const formatRM =
-    (amount) =>
-      `RM ${Number(
-        amount || 0
-      ).toFixed(2)}`;
+            <br>
 
-  const formatDate =
-    (value) => {
-      if (!value) return "-";
+            <small>
+              ${icon} ${escapeHtml(status)}
+            </small>
 
-      return new Date(
-        value
-      ).toLocaleDateString(
-        "en-MY",
-        {
-          day: "numeric",
-          month: "short",
-          year: "numeric"
-        }
-      );
-    };
+          </div>
+
+        </div>
+      `;
+    })
+    .join("");
 
   $("#content").innerHTML = `
-
     <div class="page-head">
 
       <div>
-
         <div class="eyebrow">
           TEACHER EARNINGS
         </div>
@@ -1054,7 +1055,6 @@ async function renderEarnings() {
         <p>
           Track your tuition income and payment records.
         </p>
-
       </div>
 
     </div>
@@ -1063,68 +1063,54 @@ async function renderEarnings() {
     <div class="stats-grid">
 
       <div class="stat-card">
-
         <span>💰</span>
 
         <strong>
-          ${formatRM(
-            totalEarnings
-          )}
+          ${money(total)}
         </strong>
 
         <small>
           Total Earnings
         </small>
-
       </div>
 
 
       <div class="stat-card">
-
         <span>📅</span>
 
         <strong>
-          ${formatRM(
-            monthlyEarnings
-          )}
+          ${money(thisMonth)}
         </strong>
 
         <small>
           This Month
         </small>
-
       </div>
 
 
       <div class="stat-card">
-
         <span>💳</span>
 
         <strong>
-          ${paidRecords.length}
+          ${paidCount}
         </strong>
 
         <small>
           Paid Transactions
         </small>
-
       </div>
 
 
       <div class="stat-card">
-
         <span>⏳</span>
 
         <strong>
-          ${formatRM(
-            pendingAmount
-          )}
+          ${money(pending)}
         </strong>
 
         <small>
           Pending
         </small>
-
       </div>
 
     </div>
@@ -1132,142 +1118,27 @@ async function renderEarnings() {
 
     <div class="panel">
 
-      <div style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:12px;
-        flex-wrap:wrap;
-        margin-bottom:18px;
-      ">
+      <h2>
+        Recent Earnings
+      </h2>
 
-        <div>
-
-          <h2 style="margin:0;">
-            Recent Earnings
-          </h2>
-
-          <p style="
-            margin:6px 0 0;
-            opacity:.65;
-          ">
-            Latest payment records
-          </p>
-
-        </div>
-
-        <div style="
-          padding:10px 14px;
-          border-radius:12px;
-          background:rgba(0,200,255,.08);
-        ">
-
-          <strong>
-            ${formatRM(
-              totalEarnings
-            )}
-          </strong>
-
-        </div>
-
-      </div>
-
+      <p style="opacity:.65;">
+        Latest payment records
+      </p>
 
       ${
-        records.length
+        transactions.length > 0
           ? `
-
             <div style="
               display:flex;
               flex-direction:column;
               gap:12px;
+              margin-top:18px;
             ">
-
-              ${records
-                .map(
-                  (item) => {
-
-                    const status =
-                      item.status ||
-                      "pending";
-
-                    const icon =
-                      status ===
-                      "paid"
-                        ? "🟢"
-                        : status ===
-                          "pending"
-                        ? "🟡"
-                        : "🔴";
-
-                    return `
-
-                      <div
-                        class="list-item"
-                        style="
-                          display:flex;
-                          justify-content:space-between;
-                          align-items:center;
-                          gap:15px;
-                          flex-wrap:wrap;
-                        "
-                      >
-
-                        <div>
-
-                          <strong>
-                            ${escapeHtml(
-                              item.description ||
-                              "Tuition Payment"
-                            )}
-                          </strong>
-
-                          <br>
-
-                          <small>
-                            ${formatDate(
-                              item.created_at
-                            )}
-                          </small>
-
-                        </div>
-
-
-                        <div style="
-                          text-align:right;
-                        ">
-
-                          <strong style="
-                            font-size:18px;
-                          ">
-                            ${formatRM(
-                              item.amount
-                            )}
-                          </strong>
-
-                          <br>
-
-                          <small>
-                            ${icon}
-                            ${escapeHtml(
-                              status
-                            )}
-                          </small>
-
-                        </div>
-
-                      </div>
-
-                    `;
-                  }
-                )
-                .join("")}
-
+              ${transactionHTML}
             </div>
-
           `
           : `
-
             <div class="empty">
 
               <div style="
@@ -1286,39 +1157,10 @@ async function renderEarnings() {
               </p>
 
             </div>
-
           `
       }
 
     </div>
-
-
-    ${
-      refundedAmount > 0
-        ? `
-
-          <div class="panel"
-            style="margin-top:18px;">
-
-            <h3>
-              Refunded
-            </h3>
-
-            <p>
-              Total refunded:
-              <strong>
-                ${formatRM(
-                  refundedAmount
-                )}
-              </strong>
-            </p>
-
-          </div>
-
-        `
-        : ""
-    }
-
   `;
 }
 
