@@ -899,151 +899,277 @@ async function renderTeacherHome() {
 ========================================================= */
 
 async function renderEarnings() {
+
   if (!state.user || state.role !== "teacher") {
+
     $("#content").innerHTML = `
       <div class="empty">
+
         <h3>Earnings unavailable</h3>
-        <p>Only teacher accounts can view earnings.</p>
+
+        <p>
+          Only teacher accounts can view earnings.
+        </p>
+
       </div>
     `;
+
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("transactions")
-    .select(`
-      id,
-      amount,
-      currency,
-      status,
-      description,
-      created_at
-    `)
-    .eq("teacher_id", state.user.id)
-    .order("created_at", {
-      ascending: false
-    });
+  const { data, error } =
+    await supabaseClient
+      .from("transactions")
+      .select(`
+        id,
+        amount,
+        currency,
+        status,
+        description,
+        created_at
+      `)
+      .eq(
+        "teacher_id",
+        state.user.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
 
   if (error) {
-    console.error("Earnings error:", error);
+
+    console.error(
+      "Earnings error:",
+      error
+    );
 
     $("#content").innerHTML = `
       <div class="empty">
+
         <h3>Unable to load earnings</h3>
-        <p>${escapeHtml(error.message)}</p>
+
+        <p>
+          ${escapeHtml(error.message)}
+        </p>
+
       </div>
     `;
 
     return;
   }
 
-  const transactions = data || [];
+  const transactions =
+    data || [];
 
-  let total = 0;
-  let thisMonth = 0;
-  let paidCount = 0;
-  let pending = 0;
+  let totalEarnings = 0;
+  let monthlyEarnings = 0;
+  let pendingAmount = 0;
+  let paidTransactions = 0;
 
-  const now = new Date();
+  const now =
+    new Date();
 
-  transactions.forEach((item) => {
-    const amount = Number(item.amount || 0);
+  transactions.forEach(
+    (transaction) => {
 
-    if (item.status === "paid") {
-      total += amount;
-      paidCount++;
-
-      const date = new Date(item.created_at);
+      const amount =
+        Number(
+          transaction.amount || 0
+        );
 
       if (
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
+        transaction.status === "paid"
       ) {
-        thisMonth += amount;
+
+        totalEarnings +=
+          amount;
+
+        paidTransactions++;
+
+        const date =
+          new Date(
+            transaction.created_at
+          );
+
+        if (
+          date.getMonth() ===
+            now.getMonth() &&
+          date.getFullYear() ===
+            now.getFullYear()
+        ) {
+
+          monthlyEarnings +=
+            amount;
+
+        }
+
       }
-    }
 
-    if (item.status === "pending") {
-      pending += amount;
-    }
-  });
+      if (
+        transaction.status ===
+        "pending"
+      ) {
 
-  const money = (amount) =>
-    `RM ${amount.toFixed(2)}`;
+        pendingAmount +=
+          amount;
 
-  const dateText = (value) => {
-    if (!value) return "-";
-
-    return new Date(value).toLocaleDateString(
-      "en-MY",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric"
       }
-    );
-  };
 
-  const transactionHTML = transactions
-    .map((item) => {
-      const status = item.status || "pending";
+    }
+  );
 
-      const icon =
-        status === "paid"
-          ? "🟢"
-          : status === "pending"
-          ? "🟡"
-          : "🔴";
+  const money =
+    (amount) =>
+      `RM ${amount.toFixed(2)}`;
 
-      return `
-        <div class="list-item"
-          style="
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:15px;
-            flex-wrap:wrap;
-          "
-        >
+  const formatDate =
+    (date) => {
 
-          <div>
-            <strong>
-              ${escapeHtml(
-                item.description ||
-                "Tuition Payment"
-              )}
-            </strong>
+      if (!date) {
+        return "-";
+      }
 
-            <br>
+      return new Date(
+        date
+      ).toLocaleDateString(
+        "en-MY",
+        {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        }
+      );
 
-            <small>
-              ${dateText(item.created_at)}
-            </small>
+    };
+
+  const transactionHTML =
+    transactions.length
+
+      ? transactions
+          .map(
+            (transaction) => {
+
+              const status =
+                transaction.status ||
+                "pending";
+
+              let statusIcon =
+                "🟡";
+
+              if (
+                status === "paid"
+              ) {
+                statusIcon = "🟢";
+              }
+
+              if (
+                status === "refunded"
+              ) {
+                statusIcon = "🔴";
+              }
+
+              return `
+                <div
+                  class="list-item"
+                  style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    gap:16px;
+                    padding:18px;
+                    flex-wrap:wrap;
+                  "
+                >
+
+                  <div>
+
+                    <strong>
+                      ${escapeHtml(
+                        transaction.description ||
+                        "Tuition Payment"
+                      )}
+                    </strong>
+
+                    <br>
+
+                    <small>
+                      ${formatDate(
+                        transaction.created_at
+                      )}
+                    </small>
+
+                  </div>
+
+                  <div
+                    style="
+                      text-align:right;
+                    "
+                  >
+
+                    <strong
+                      style="
+                        font-size:18px;
+                      "
+                    >
+                      ${money(
+                        Number(
+                          transaction.amount ||
+                          0
+                        )
+                      )}
+                    </strong>
+
+                    <br>
+
+                    <small>
+                      ${statusIcon}
+                      ${escapeHtml(
+                        status
+                      )}
+                    </small>
+
+                  </div>
+
+                </div>
+              `;
+
+            }
+          )
+          .join("")
+
+      : `
+          <div class="empty">
+
+            <div
+              style="
+                font-size:42px;
+                margin-bottom:10px;
+              "
+            >
+              💰
+            </div>
+
+            <h3>
+              No earnings yet
+            </h3>
+
+            <p>
+              Your payment records
+              will appear here.
+            </p>
+
           </div>
-
-          <div style="text-align:right;">
-
-            <strong style="font-size:18px;">
-              ${money(Number(item.amount || 0))}
-            </strong>
-
-            <br>
-
-            <small>
-              ${icon} ${escapeHtml(status)}
-            </small>
-
-          </div>
-
-        </div>
-      `;
-    })
-    .join("");
+        `;
 
   $("#content").innerHTML = `
+
     <div class="page-head">
 
       <div>
+
         <div class="eyebrow">
           TEACHER EARNINGS
         </div>
@@ -1053,8 +1179,10 @@ async function renderEarnings() {
         </h1>
 
         <p>
-          Track your tuition income and payment records.
+          Track your tuition income
+          and payment records.
         </p>
+
       </div>
 
     </div>
@@ -1063,54 +1191,76 @@ async function renderEarnings() {
     <div class="stats-grid">
 
       <div class="stat-card">
-        <span>💰</span>
+
+        <span>
+          💰
+        </span>
 
         <strong>
-          ${money(total)}
+          ${money(
+            totalEarnings
+          )}
         </strong>
 
         <small>
           Total Earnings
         </small>
+
       </div>
 
 
       <div class="stat-card">
-        <span>📅</span>
+
+        <span>
+          📅
+        </span>
 
         <strong>
-          ${money(thisMonth)}
+          ${money(
+            monthlyEarnings
+          )}
         </strong>
 
         <small>
           This Month
         </small>
+
       </div>
 
 
       <div class="stat-card">
-        <span>💳</span>
+
+        <span>
+          💳
+        </span>
 
         <strong>
-          ${paidCount}
+          ${paidTransactions}
         </strong>
 
         <small>
           Paid Transactions
         </small>
+
       </div>
 
 
       <div class="stat-card">
-        <span>⏳</span>
+
+        <span>
+          ⏳
+        </span>
 
         <strong>
-          ${money(pending)}
+          ${money(
+            pendingAmount
+          )}
         </strong>
 
         <small>
           Pending
         </small>
+
       </div>
 
     </div>
@@ -1122,45 +1272,29 @@ async function renderEarnings() {
         Recent Earnings
       </h2>
 
-      <p style="opacity:.65;">
+      <p
+        style="
+          opacity:.65;
+          margin-bottom:18px;
+        "
+      >
         Latest payment records
       </p>
 
-      ${
-        transactions.length > 0
-          ? `
-            <div style="
-              display:flex;
-              flex-direction:column;
-              gap:12px;
-              margin-top:18px;
-            ">
-              ${transactionHTML}
-            </div>
-          `
-          : `
-            <div class="empty">
+      <div
+        style="
+          display:flex;
+          flex-direction:column;
+          gap:12px;
+        "
+      >
 
-              <div style="
-                font-size:42px;
-                margin-bottom:10px;
-              ">
-                💰
-              </div>
+        ${transactionHTML}
 
-              <h3>
-                No earnings yet
-              </h3>
-
-              <p>
-                Payment records will appear here.
-              </p>
-
-            </div>
-          `
-      }
+      </div>
 
     </div>
+
   `;
 }
 
