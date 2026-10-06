@@ -10841,56 +10841,198 @@ async function renderPage() {
 
   switch (state.page) {
 
+    /* =========================
+       HOME
+    ========================= */
+
     case "home":
-      await renderHome();
+
+      if (state.role === "teacher") {
+        await renderTeacherHome();
+      }
+
+      else if (state.role === "parent") {
+        await renderParentHome();
+      }
+
+      else {
+        await renderStudentHome();
+      }
+
       break;
+
+
+    /* =========================
+       CLASSES
+    ========================= */
 
     case "classes":
+
       await renderClasses();
+
       break;
+
+
+    /* =========================
+       REPLAY
+    ========================= */
 
     case "replay":
+
       await renderReplay();
+
       break;
+
+
+    /* =========================
+       HOMEWORK
+    ========================= */
 
     case "homework":
+
       await renderHomework();
+
       break;
+
+
+    /* =========================
+       NOTES
+    ========================= */
 
     case "notes":
+
       await renderNotes();
+
       break;
+
+
+    /* =========================
+       QUIZ
+    ========================= */
 
     case "quiz":
+
       await renderQuiz();
+
       break;
+
+
+    /* =========================
+       PROGRESS
+    ========================= */
 
     case "progress":
+
       await renderProgress();
+
       break;
+
+
+    /* =========================
+       CHAT
+    ========================= */
 
     case "chat":
+
       await renderChat();
+
       break;
+
+
+    /* =========================
+       NOTIFICATIONS
+    ========================= */
 
     case "notifications":
+
       await renderNotifications();
+
       break;
+
+
+    /* =========================
+       EARNINGS
+    ========================= */
 
     case "earnings":
-      await renderEarnings();
+
+      if (state.role === "teacher") {
+
+        await renderEarnings();
+
+      }
+
+      else {
+
+        await renderHome();
+
+      }
+
       break;
+
+
+    /* =========================
+       PROFILE
+    ========================= */
 
     case "profile":
+
       await renderProfile();
+
       break;
+
+
+    /* =========================
+       SETTINGS
+    ========================= */
 
     case "settings":
-      await renderSettings();
+
+      if (typeof renderSettings === "function") {
+
+        await renderSettings();
+
+      }
+
+      else {
+
+        renderSimple(
+          "Settings",
+          "SETTINGS",
+          "Manage your account settings."
+        );
+
+      }
+
       break;
 
+
+    /* =========================
+       DEFAULT
+    ========================= */
+
     default:
-      await renderHome();
+
+      state.page = "home";
+
+      if (state.role === "teacher") {
+
+        await renderTeacherHome();
+
+      }
+
+      else if (state.role === "parent") {
+
+        await renderParentHome();
+
+      }
+
+      else {
+
+        await renderStudentHome();
+
+      }
+
       break;
 
   }
