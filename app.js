@@ -10310,19 +10310,6 @@ function renderSettings() {
 }
 
 /* =========================================================
-   EARNINGS
-========================================================= */
-
-function renderEarnings() {
-
-  renderSimple(
-    "Teacher Earnings",
-    "EARNINGS",
-    "Verified earnings and withdrawal records."
-  );
-}
-
-/* =========================================================
    SIMPLE PAGE
 ========================================================= */
 
