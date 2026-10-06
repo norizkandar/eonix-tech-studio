@@ -10757,11 +10757,10 @@ async function renderPage() {
 
     default:
       await renderHome();
+      break;
 
-    if (state.page === "earnings") {
-    await renderTeacherEarnings();
-    return;
   }
+
 }
 
 /* =========================================================
