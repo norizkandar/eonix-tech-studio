@@ -5071,27 +5071,38 @@ async function openClassDetails(id) {
       flex-wrap:wrap;
     ">
 
-      ${
-        state.role === "student"
-          ? `
-            <button
-              class="primary-btn"
-              onclick="openLessons('${cls.id}')">
 
-              📚 View Lessons
+         
+${
+  state.role === "student"
+    ? `
+      <button
+        class="primary-btn"
+        onclick="openLessons('${cls.id}')">
+        📚 View Lessons
+      </button>
 
-            </button>
+      <button
+        class="primary-btn"
+        onclick="joinClass('${cls.id}')">
+        Join Class
+      </button>
 
-            <button
-              class="primary-btn"
-              onclick="joinClass('${cls.id}')">
+      <button
+        class="primary-btn"
+        onclick="openTeacherRating('${cls.id}')">
+        ⭐ Rate Teacher
+      </button>
 
-              Join Class
+      <button
+        class="secondary-btn"
+        onclick="openTeacherReviews('${cls.teacher_id || cls.profiles?.id}')">
+        💬 View Reviews
+      </button>
+    `
+    : ""
+}
 
-            </button>
-          `
-          : ""
-      }
 
       ${
         state.role === "teacher"
@@ -5113,6 +5124,201 @@ async function openClassDetails(id) {
 
 window.openClassDetails =
   openClassDetails;
+
+
+/* =========================================================
+   TEACHER RATING & REVIEWS
+========================================================= */
+
+async function openTeacherRating(classId) {
+  if (!state.user || state.role !== "student") {
+    showToast("Student access required.");
+    return;
+  }
+
+  const cls = (state.classes || []).find(
+    c => String(c.id) === String(classId)
+  );
+
+  if (!cls) {
+    showToast("Class not found.");
+    return;
+  }
+
+  const teacherId = cls.teacher_id || cls.profiles?.id;
+
+  if (!teacherId) {
+    showToast("Teacher information is unavailable.");
+    return;
+  }
+
+  const { data: membership, error: membershipError } =
+    await supabaseClient
+      .from("class_members")
+      .select("class_id")
+      .eq("class_id", classId)
+      .eq("student_id", state.user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+  if (membershipError || !membership) {
+    showToast("Join this class before rating the teacher.");
+    return;
+  }
+
+  const { data: existingReview, error: reviewError } =
+    await supabaseClient
+      .from("teacher_reviews")
+      .select("rating, review_text")
+      .eq("student_id", state.user.id)
+      .eq("teacher_id", teacherId)
+      .maybeSingle();
+
+  if (reviewError) {
+    console.error(reviewError);
+    showToast("Could not check your previous review.");
+    return;
+  }
+
+  openModal(`
+    <div class="eyebrow">TEACHER REVIEW</div>
+    <h2>Rate Your Teacher</h2>
+    <p>${escapeHtml(cls.profiles?.full_name || "Your teacher")}</p>
+
+    <form id="teacherRatingForm">
+      <label for="teacherRating">Rating</label>
+      <select id="teacherRating" required>
+        <option value="">Choose a rating</option>
+        <option value="5">★★★★★ — Excellent</option>
+        <option value="4">★★★★ — Very good</option>
+        <option value="3">★★★ — Good</option>
+        <option value="2">★★ — Fair</option>
+        <option value="1">★ — Needs improvement</option>
+      </select>
+
+      <label for="teacherReviewText">Your review (optional)</label>
+      <textarea
+        id="teacherReviewText"
+        rows="4"
+        maxlength="1000"
+        placeholder="Share your learning experience..."
+      >${escapeHtml(existingReview?.review_text || "")}</textarea>
+
+      ${
+        existingReview
+          ? `<p>You have already rated this teacher. Each student can submit one rating per teacher.</p>`
+          : ""
+      }
+
+      <button class="primary-btn" type="submit">
+        ${existingReview ? "Review Already Submitted" : "Submit Review"}
+      </button>
+    </form>
+  `);
+
+  const ratingSelect = document.getElementById("teacherRating");
+  const reviewText = document.getElementById("teacherReviewText");
+  const form = document.getElementById("teacherRatingForm");
+
+  if (existingReview && ratingSelect) {
+    ratingSelect.value = String(existingReview.rating);
+    ratingSelect.disabled = true;
+    if (reviewText) reviewText.disabled = true;
+  }
+
+  if (existingReview && form) {
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+  }
+
+  form?.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (existingReview) return;
+
+    const rating = Number(ratingSelect?.value);
+    const text = reviewText?.value.trim() || "";
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      showToast("Please choose a rating from 1 to 5.");
+      return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+
+    const { error } = await supabaseClient
+      .from("teacher_reviews")
+      .insert({
+        student_id: state.user.id,
+        teacher_id: teacherId,
+        class_id: classId,
+        rating,
+        review_text: text || null
+      });
+
+    if (error) {
+      console.error("Teacher review submission failed:", error);
+      showToast(
+        error.code === "23505"
+          ? "You have already rated this teacher."
+          : "Could not submit your review. Please try again."
+      );
+      if (submitButton) submitButton.disabled = false;
+      return;
+    }
+
+    showToast("Thank you for reviewing your teacher!");
+    await openTeacherReviews(teacherId, cls.profiles?.full_name || "Teacher");
+  });
+}
+
+async function openTeacherReviews(teacherId, teacherName = "Teacher") {
+  const { data, error } = await supabaseClient
+    .from("teacher_reviews")
+    .select("rating, review_text, created_at")
+    .eq("teacher_id", teacherId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    showToast("Could not load teacher reviews.");
+    return;
+  }
+
+  const reviews = data || [];
+  const average = reviews.length
+    ? reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length
+    : 0;
+
+  openModal(`
+    <div class="eyebrow">STUDENT FEEDBACK</div>
+    <h2>${escapeHtml(teacherName)}</h2>
+    <p>
+      ${reviews.length
+        ? `⭐ ${average.toFixed(1)} / 5 · ${reviews.length} review(s)`
+        : "No reviews yet."}
+    </p>
+
+    <div style="display:grid;gap:12px;margin-top:16px;">
+      ${
+        reviews.length
+          ? reviews.map(review => `
+              <article class="panel">
+                <p>${"★".repeat(Number(review.rating))}${"☆".repeat(5 - Number(review.rating))}</p>
+                <p>${escapeHtml(review.review_text || "No written comment.")}</p>
+                <small>${escapeHtml(new Date(review.created_at).toLocaleDateString())}</small>
+              </article>
+            `).join("")
+          : `<p>Be the first to leave feedback after joining a class.</p>`
+      }
+    </div>
+  `);
+}
+
+window.openTeacherRating = openTeacherRating;
+window.openTeacherReviews = openTeacherReviews;
+
 
 /* =========================================================
    CREATE LESSON MODAL
