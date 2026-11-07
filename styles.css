@@ -1,8 +1,8 @@
 
 /* =========================================================
-   SMART ACADEMY — PREMIUM PURPLE DESIGN SYSTEM
+   SMART ACADEMY — PREMIUM PURE BLACK DESIGN SYSTEM
    EONIX TECH STUDIO
-   Version 6.0 | Dark Purple / Neon Purple / Electric Blue
+   Version 7.0 | Pure Black / Neon Purple / Electric Blue
    Responsive | Light/Dark Theme | Mobile First
    ========================================================= */
 
@@ -82,56 +82,64 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #17112F;
-  --bg-secondary: #1C1438;
+  /* Pure black backgrounds */
+  --bg: #000000;
+  --bg-secondary: #050505;
 
-  --surface: #21183F;
-  --surface-raised: #2A2050;
-  --surface-soft: #33265F;
-  --surface-hover: #403071;
+  /* Cards and surfaces */
+  --surface: #090909;
+  --surface-raised: #101010;
+  --surface-soft: #151515;
+  --surface-hover: #1D1D1D;
 
-  --text: #F8F5FF;
-  --text-secondary: #E0D5FA;
-  --muted: #B6A8D2;
-  --muted-light: #8E7EAE;
+  /* Typography */
+  --text: #FFFFFF;
+  --text-secondary: #E2E2E2;
+  --muted: #A0A0A0;
+  --muted-light: #777777;
 
-  --border: #40335F;
-  --border-strong: #5A477F;
+  /* Borders */
+  --border: #242424;
+  --border-strong: #383838;
 
+  /* Electric blue */
   --blue: #398BFF;
   --blue-hover: #69A8FF;
   --blue-strong: #91BEFF;
-  --blue-light: #203D70;
-  --blue-soft: #1B2D50;
+  --blue-light: #102442;
+  --blue-soft: #0B1729;
 
-  --purple: #925CFF;
-  --purple-hover: #AC83FF;
-  --purple-strong: #C9B6FF;
-  --purple-light: #39265E;
-  --purple-soft: #2D204B;
+  /* Neon purple */
+  --purple: #A276FF;
+  --purple-hover: #BB9AFF;
+  --purple-strong: #D0B9FF;
+  --purple-light: #26163F;
+  --purple-soft: #171025;
 
   --lavender: #C9B6FF;
   --cyan: #65A9FF;
   --indigo: #B18AFF;
 
+  /* Status colours */
   --success: #4ADE80;
-  --success-bg: #173B2B;
+  --success-bg: #10291B;
 
   --warning: #FBBF24;
-  --warning-bg: #443314;
+  --warning-bg: #30240C;
 
   --danger: #F87171;
-  --danger-bg: #461F32;
+  --danger-bg: #321313;
 
   --info: #80B7FF;
-  --info-bg: #20365C;
+  --info-bg: #10213B;
 
-  --shadow-xs: 0 2px 6px rgba(0,0,0,.15);
-  --shadow-sm: 0 5px 18px rgba(0,0,0,.2);
-  --shadow-md: 0 12px 35px rgba(0,0,0,.27);
-  --shadow-lg: 0 24px 65px rgba(0,0,0,.38);
+  /* Black theme shadows */
+  --shadow-xs: 0 2px 6px rgba(0,0,0,.35);
+  --shadow-sm: 0 5px 18px rgba(0,0,0,.45);
+  --shadow-md: 0 12px 35px rgba(0,0,0,.55);
+  --shadow-lg: 0 24px 65px rgba(0,0,0,.7);
 
-  --focus-ring: 0 0 0 4px rgba(146,92,255,.28);
+  --focus-ring: 0 0 0 4px rgba(146,92,255,.32);
 }
 
 /* ======================== RESET ======================== */
@@ -158,12 +166,12 @@ body {
   background:
     radial-gradient(
       ellipse at 85% 0%,
-      rgba(146,92,255,.12),
+      rgba(146,92,255,.045),
       transparent 38%
     ),
     radial-gradient(
       ellipse at 10% 100%,
-      rgba(57,139,255,.045),
+      rgba(57,139,255,.025),
       transparent 35%
     ),
     var(--bg);
@@ -316,15 +324,15 @@ textarea:focus-visible {
   background:
     radial-gradient(
       ellipse at 50% 35%,
-      rgba(146,92,255,.35),
+      rgba(146,92,255,.22),
       transparent 48%
     ),
     radial-gradient(
       ellipse at 15% 85%,
-      rgba(57,139,255,.12),
+      rgba(57,139,255,.07),
       transparent 35%
     ),
-    #17112F;
+    #000000;
 }
 
 .splash::before {
@@ -332,8 +340,8 @@ textarea:focus-visible {
   inset: 0;
 
   background-image:
-    linear-gradient(rgba(201,182,255,.045) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(201,182,255,.045) 1px,transparent 1px);
+    linear-gradient(rgba(201,182,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(201,182,255,.035) 1px,transparent 1px);
 
   background-size: 42px 42px;
   content: "";
@@ -435,8 +443,8 @@ textarea:focus-visible {
   padding: 36px;
 
   background:
-    radial-gradient(ellipse at 5% 5%,rgba(146,92,255,.15),transparent 35%),
-    radial-gradient(ellipse at 95% 95%,rgba(57,139,255,.08),transparent 35%),
+    radial-gradient(ellipse at 5% 5%,rgba(146,92,255,.08),transparent 35%),
+    radial-gradient(ellipse at 95% 95%,rgba(57,139,255,.04),transparent 35%),
     var(--bg);
 }
 
@@ -472,9 +480,9 @@ textarea:focus-visible {
   color: #FFFFFF;
 
   background:
-    radial-gradient(circle at 90% 10%,rgba(146,92,255,.48),transparent 32%),
-    radial-gradient(circle at 10% 100%,rgba(57,139,255,.22),transparent 38%),
-    linear-gradient(145deg,#17112F,#251747);
+    radial-gradient(circle at 90% 10%,rgba(146,92,255,.28),transparent 32%),
+    radial-gradient(circle at 10% 100%,rgba(57,139,255,.12),transparent 38%),
+    linear-gradient(145deg,#000000,#10091C);
 }
 
 .auth-promo::before {
@@ -482,8 +490,8 @@ textarea:focus-visible {
   inset: 0;
 
   background-image:
-    linear-gradient(rgba(201,182,255,.045) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(201,182,255,.045) 1px,transparent 1px);
+    linear-gradient(rgba(201,182,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(201,182,255,.035) 1px,transparent 1px);
 
   background-size: 36px 36px;
   content: "";
@@ -1568,7 +1576,7 @@ textarea:focus-visible {
 
   padding: 20px;
 
-  background: rgba(17,11,38,.72);
+  background: rgba(0,0,0,.78);
 
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1654,11 +1662,11 @@ textarea:focus-visible {
 
   overflow-wrap: anywhere;
 
-  border: 1px solid #514275;
+  border: 1px solid #383838;
   border-radius: 14px;
 
   color: #FFFFFF;
-  background: #21183F;
+  background: #101010;
 
   box-shadow: var(--shadow-lg);
 }
@@ -2002,7 +2010,7 @@ textarea:focus-visible {
     border-top: 1px solid var(--border);
 
     background: var(--surface);
-    box-shadow: 0 -8px 24px rgba(35,20,70,.08);
+    box-shadow: 0 -8px 24px rgba(0,0,0,.35);
   }
 
   .mobile-nav a,
