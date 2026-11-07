@@ -3582,7 +3582,7 @@ async function saveClassPrice(classId) {
       button.textContent = "Saving...";
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("classes")
       .update({
         price: Number(price.toFixed(2))
