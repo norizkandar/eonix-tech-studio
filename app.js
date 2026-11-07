@@ -119,6 +119,7 @@ function getDisplayName(user = state.user) {
   );
 }
 
+
 /* =========================================================
    NAVIGATION
 ========================================================= */
@@ -140,6 +141,7 @@ const NAV = {
   teacher: [
     ["home", "⌂", "Dashboard"],
     ["classes", "▣", "Classes"],
+    ["class-pricing", "◇", "Class Pricing"],
     ["replay", "▶", "Replay"],
     ["homework", "✓", "Homework"],
     ["notes", "✎", "Notes"],
@@ -161,19 +163,22 @@ const NAV = {
 };
 
 function renderNav() {
+
   const items = NAV[state.role] || NAV.student;
 
   const sidebar = $("#sidebarNav");
   const mobile = $("#mobileNav");
 
   if (sidebar) {
+
     sidebar.innerHTML = items
       .map(
         ([id, icon, label]) => `
           <button
             data-page="${id}"
             class="${state.page === id ? "active" : ""}">
-            ${icon} ${escapeHtml(label)}
+            <span class="nav-icon">${icon}</span>
+            <span>${escapeHtml(label)}</span>
           </button>
         `
       )
@@ -181,6 +186,7 @@ function renderNav() {
   }
 
   if (mobile) {
+
     mobile.innerHTML = items
       .slice(0, 5)
       .map(
@@ -188,7 +194,8 @@ function renderNav() {
           <button
             data-page="${id}"
             class="${state.page === id ? "active" : ""}">
-            ${icon}<br>${escapeHtml(label)}
+            <span class="nav-icon">${icon}</span>
+            <span>${escapeHtml(label)}</span>
           </button>
         `
       )
