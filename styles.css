@@ -2,7 +2,7 @@
 /* =========================================================
    SMART ACADEMY — PREMIUM PURPLE DESIGN SYSTEM
    EONIX TECH STUDIO
-   Version 5.0 | Purple / Electric Blue / Lavender
+   Version 6.0 | Dark Purple / Neon Purple / Electric Blue
    Responsive | Light/Dark Theme | Mobile First
    ========================================================= */
 
@@ -11,21 +11,21 @@
 :root {
   color-scheme: light;
 
-  --bg: #F7F5FF;
-  --bg-secondary: #EFEBFF;
+  --bg: #F7F4FF;
+  --bg-secondary: #EEE7FF;
 
   --surface: #FFFFFF;
   --surface-raised: #FFFFFF;
-  --surface-soft: #F3EEFF;
-  --surface-hover: #EAE2FF;
+  --surface-soft: #F1EBFF;
+  --surface-hover: #E6DAFF;
 
-  --text: #21183A;
-  --text-secondary: #493C67;
-  --muted: #827796;
-  --muted-light: #A69BB9;
+  --text: #211438;
+  --text-secondary: #493765;
+  --muted: #827493;
+  --muted-light: #A99BBE;
 
-  --border: #E8E0F5;
-  --border-strong: #D6C8EF;
+  --border: #E6DDF2;
+  --border-strong: #CFC0E8;
 
   --blue: #398BFF;
   --blue-hover: #2675E8;
@@ -36,8 +36,8 @@
   --purple: #925CFF;
   --purple-hover: #7B43EA;
   --purple-strong: #7139D6;
-  --purple-light: #EDE3FF;
-  --purple-soft: #F6F1FF;
+  --purple-light: #E9DEFF;
+  --purple-soft: #F4EEFF;
 
   --lavender: #C9B6FF;
   --cyan: #398BFF;
@@ -70,7 +70,7 @@
   --shadow-md: 0 12px 35px rgba(35,20,70,.085);
   --shadow-lg: 0 24px 65px rgba(35,20,70,.12);
 
-  --focus-ring: 0 0 0 4px rgba(146,92,255,.17);
+  --focus-ring: 0 0 0 4px rgba(146,92,255,.20);
 
   --transition-fast: 150ms ease;
   --transition-normal: 220ms ease;
@@ -83,29 +83,29 @@
   color-scheme: dark;
 
   --bg: #17112F;
-  --bg-secondary: #1D163A;
+  --bg-secondary: #1C1438;
 
-  --surface: #211A40;
-  --surface-raised: #29204C;
-  --surface-soft: #302653;
-  --surface-hover: #392D60;
+  --surface: #21183F;
+  --surface-raised: #2A2050;
+  --surface-soft: #33265F;
+  --surface-hover: #403071;
 
-  --text: #F8F6FF;
-  --text-secondary: #DDD4F4;
-  --muted: #B0A5CC;
-  --muted-light: #887BA8;
+  --text: #F8F5FF;
+  --text-secondary: #E0D5FA;
+  --muted: #B6A8D2;
+  --muted-light: #8E7EAE;
 
-  --border: #3B315D;
-  --border-strong: #514275;
+  --border: #40335F;
+  --border-strong: #5A477F;
 
   --blue: #398BFF;
-  --blue-hover: #68A7FF;
+  --blue-hover: #69A8FF;
   --blue-strong: #91BEFF;
   --blue-light: #203D70;
   --blue-soft: #1B2D50;
 
-  --purple: #A77AFF;
-  --purple-hover: #BEA0FF;
+  --purple: #925CFF;
+  --purple-hover: #AC83FF;
   --purple-strong: #C9B6FF;
   --purple-light: #39265E;
   --purple-soft: #2D204B;
@@ -131,7 +131,7 @@
   --shadow-md: 0 12px 35px rgba(0,0,0,.27);
   --shadow-lg: 0 24px 65px rgba(0,0,0,.38);
 
-  --focus-ring: 0 0 0 4px rgba(146,92,255,.23);
+  --focus-ring: 0 0 0 4px rgba(146,92,255,.28);
 }
 
 /* ======================== RESET ======================== */
@@ -153,14 +153,18 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-
   color: var(--text);
 
   background:
     radial-gradient(
       ellipse at 85% 0%,
-      rgba(146,92,255,.055),
+      rgba(146,92,255,.12),
       transparent 38%
+    ),
+    radial-gradient(
+      ellipse at 10% 100%,
+      rgba(57,139,255,.045),
+      transparent 35%
     ),
     var(--bg);
 
@@ -312,12 +316,12 @@ textarea:focus-visible {
   background:
     radial-gradient(
       ellipse at 50% 35%,
-      rgba(146,92,255,.3),
+      rgba(146,92,255,.35),
       transparent 48%
     ),
     radial-gradient(
       ellipse at 15% 85%,
-      rgba(57,139,255,.16),
+      rgba(57,139,255,.12),
       transparent 35%
     ),
     #17112F;
@@ -352,7 +356,7 @@ textarea:focus-visible {
 
   background: linear-gradient(135deg,#925CFF,#398BFF);
 
-  box-shadow: 0 10px 35px rgba(146,92,255,.35);
+  box-shadow: 0 10px 35px rgba(146,92,255,.4);
 }
 
 .logo-orb {
@@ -370,7 +374,6 @@ textarea:focus-visible {
 
 .splash h1 {
   position: relative;
-
   margin: 0;
   color: #FFFFFF;
 
@@ -383,7 +386,6 @@ textarea:focus-visible {
 
 .splash p {
   position: relative;
-
   margin: 12px 0 22px;
   color: #C9B6FF;
 
@@ -433,8 +435,8 @@ textarea:focus-visible {
   padding: 36px;
 
   background:
-    radial-gradient(ellipse at 5% 5%,rgba(146,92,255,.12),transparent 35%),
-    radial-gradient(ellipse at 95% 95%,rgba(57,139,255,.09),transparent 35%),
+    radial-gradient(ellipse at 5% 5%,rgba(146,92,255,.15),transparent 35%),
+    radial-gradient(ellipse at 95% 95%,rgba(57,139,255,.08),transparent 35%),
     var(--bg);
 }
 
@@ -470,9 +472,9 @@ textarea:focus-visible {
   color: #FFFFFF;
 
   background:
-    radial-gradient(circle at 90% 10%,rgba(146,92,255,.42),transparent 32%),
-    radial-gradient(circle at 10% 100%,rgba(57,139,255,.34),transparent 38%),
-    linear-gradient(145deg,#17112F,#25194B);
+    radial-gradient(circle at 90% 10%,rgba(146,92,255,.48),transparent 32%),
+    radial-gradient(circle at 10% 100%,rgba(57,139,255,.22),transparent 38%),
+    linear-gradient(145deg,#17112F,#251747);
 }
 
 .auth-promo::before {
@@ -562,7 +564,7 @@ textarea:focus-visible {
   border-radius: var(--radius-pill);
 
   color: #D8C9FF;
-  background: rgba(255,255,255,.06);
+  background: rgba(146,92,255,.12);
 
   font-size: 11px;
   font-weight: 700;
@@ -638,7 +640,6 @@ textarea:focus-visible {
   justify-content: center;
 
   padding: 44px;
-
   background: var(--surface);
 }
 
@@ -749,9 +750,9 @@ textarea:focus-visible {
   border-radius: 12px;
 
   color: #FFFFFF;
-  background: linear-gradient(135deg,#925CFF,#398BFF);
+  background: linear-gradient(120deg,#925CFF 0%,#8048F0 55%,#398BFF 100%);
 
-  box-shadow: 0 8px 22px rgba(146,92,255,.23);
+  box-shadow: 0 8px 22px rgba(146,92,255,.28);
 
   font-weight: 750;
 
@@ -765,7 +766,7 @@ textarea:focus-visible {
   color: #FFFFFF;
   filter: brightness(1.08);
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(146,92,255,.32);
+  box-shadow: 0 12px 28px rgba(146,92,255,.38);
 }
 
 .primary-btn:active {
@@ -829,7 +830,6 @@ textarea:focus-visible {
   overflow-y: auto;
 
   border-right: 1px solid var(--border);
-
   background: var(--surface);
 
   transition:
@@ -929,7 +929,7 @@ textarea:focus-visible {
 #sidebarNav [data-page].active,
 #sidebarNav .active,
 #sidebarNav [aria-current="page"] {
-  border-color: rgba(146,92,255,.13);
+  border-color: rgba(146,92,255,.2);
   color: var(--purple);
   background: var(--purple-light);
   font-weight: 750;
@@ -1316,14 +1316,14 @@ textarea:focus-visible {
 .content button.btn-primary {
   border: 1px solid transparent;
   color: #FFFFFF;
-  background: linear-gradient(135deg,#925CFF,#398BFF);
+  background: linear-gradient(120deg,#925CFF 0%,#8048F0 55%,#398BFF 100%);
   font-weight: 700;
 }
 
 .content button.primary-btn:hover,
 .content .btn-primary:hover,
 .content button.btn-primary:hover {
-  background: linear-gradient(135deg,#7B43EA,#2675E8);
+  background: linear-gradient(120deg,#7B43EA,#398BFF);
 }
 
 .content .btn-secondary,
@@ -1658,7 +1658,7 @@ textarea:focus-visible {
   border-radius: 14px;
 
   color: #FFFFFF;
-  background: #211A40;
+  background: #21183F;
 
   box-shadow: var(--shadow-lg);
 }
@@ -1731,7 +1731,7 @@ textarea:focus-visible {
 /* ======================== EXTRA PURPLE COMPONENTS ======================== */
 
 .content :is(.highlight,.featured,.featured-card) {
-  border-color: rgba(146,92,255,.25);
+  border-color: rgba(146,92,255,.28);
   background:
     linear-gradient(
       135deg,
