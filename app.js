@@ -11031,6 +11031,7 @@ async function linkChild(
   await renderPage();
 }
 
+
 /* =========================================================
    PAGE ROUTER
 ========================================================= */
@@ -11048,15 +11049,21 @@ async function renderPage() {
     case "home":
 
       if (state.role === "teacher") {
+
         await renderTeacherHome();
+
       }
 
       else if (state.role === "parent") {
+
         await renderParentHome();
+
       }
 
       else {
+
         await renderStudentHome();
+
       }
 
       break;
@@ -11069,6 +11076,29 @@ async function renderPage() {
     case "classes":
 
       await renderClasses();
+
+      break;
+
+
+    /* =========================
+       CLASS PRICING
+    ========================= */
+
+    case "class-pricing":
+
+      if (state.role === "teacher") {
+
+        await renderClassPricing();
+
+      }
+
+      else {
+
+        state.page = "home";
+
+        await renderPage();
+
+      }
 
       break;
 
@@ -11164,7 +11194,9 @@ async function renderPage() {
 
       else {
 
-        await renderHome();
+        state.page = "home";
+
+        await renderPage();
 
       }
 
@@ -11235,24 +11267,10 @@ async function renderPage() {
 
       break;
 
-      /* =========================
-         CLASS PRICING
-         ========================= */
-
-case "class-pricing":
-
-  if (state.role === "teacher") {
-    await renderClassPricing();
-  } else {
-    state.page = "home";
-    await renderPage();
-  }
-
-  break;
-
   }
 
 }
+
 
 /* =========================================================
    NAVIGATION CLICK
@@ -11273,6 +11291,7 @@ document.addEventListener(
       button.dataset.page;
 
     await renderPage();
+
   }
 );
 
