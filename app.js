@@ -3328,6 +3328,293 @@ async function renderClasses() {
 }
 
 /* =========================================================
+   CLASS PRICING — SMART ACADEMY
+   EONIX TECH STUDIO
+========================================================= */
+
+async function renderClassPricing() {
+
+  if (!state.user || state.role !== "teacher") {
+    state.page = "home";
+    await renderPage();
+    return;
+  }
+
+  $("#content").innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">TEACHER MANAGEMENT</div>
+        <h1>Class Pricing</h1>
+        <p>Manage your tuition class prices and payment settings.</p>
+      </div>
+    </div>
+
+    <div id="pricingOverview"
+      style="
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+        gap:16px;
+        margin-bottom:24px;
+      ">
+      <div class="empty">Loading pricing...</div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:24px;">
+      <h2 style="margin-top:0;">Pricing Management</h2>
+      <p style="opacity:.7;">
+        Set the price for each of your tuition classes.
+      </p>
+
+      <div id="pricingList">
+        <div class="empty">Loading your classes...</div>
+      </div>
+    </div>
+  `;
+
+  try {
+
+    const classes = await loadTeacherClasses();
+
+    state.classes = classes || [];
+
+    const total = state.classes.length;
+
+    const paid = state.classes.filter(
+      c => Number(c.price || 0) > 0
+    ).length;
+
+    const free = total - paid;
+
+    $("#pricingOverview").innerHTML = `
+
+      <div class="card" style="padding:22px;">
+        <div style="opacity:.7;">Total Classes</div>
+        <h2 style="font-size:30px;margin:10px 0;">
+          ${total}
+        </h2>
+        <small>All your classes</small>
+      </div>
+
+      <div class="card" style="padding:22px;">
+        <div style="opacity:.7;">Paid Classes</div>
+        <h2 style="font-size:30px;margin:10px 0;color:#A78BFA;">
+          ${paid}
+        </h2>
+        <small>Classes with a price</small>
+      </div>
+
+      <div class="card" style="padding:22px;">
+        <div style="opacity:.7;">Free Classes</div>
+        <h2 style="font-size:30px;margin:10px 0;color:#60A5FA;">
+          ${free}
+        </h2>
+        <small>Free tuition classes</small>
+      </div>
+
+    `;
+
+    const list = $("#pricingList");
+
+    if (!total) {
+
+      list.innerHTML = `
+        <div class="empty">
+          <h3>No classes found</h3>
+          <p>Create your first class to manage its pricing.</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    list.innerHTML = state.classes.map(c => {
+
+      const price = Number(c.price || 0);
+      const isFree = price <= 0;
+
+      return `
+        <div style="
+          padding:20px 0;
+          border-bottom:1px solid rgba(255,255,255,.10);
+        ">
+
+          <div style="
+            display:flex;
+            justify-content:space-between;
+            align-items:flex-start;
+            gap:12px;
+            flex-wrap:wrap;
+          ">
+
+            <div style="flex:1;min-width:180px;">
+
+              <span class="badge">
+                ${escapeHtml(c.subjects?.name || "Subject")}
+              </span>
+
+              <h3 style="margin:12px 0 6px;">
+                ${escapeHtml(c.title || "Untitled Class")}
+              </h3>
+
+              <p style="opacity:.65;margin:0;">
+                ${escapeHtml(c.description || "Tuition class")}
+              </p>
+
+            </div>
+
+            <div style="text-align:right;">
+
+              <div style="font-size:12px;opacity:.6;">
+                CURRENT PRICE
+              </div>
+
+              <div style="
+                font-size:24px;
+                font-weight:800;
+                margin-top:5px;
+              ">
+                ${isFree ? "FREE" : "RM " + price.toFixed(2)}
+              </div>
+
+              <span class="badge">
+                ${isFree ? "Free Class" : "Paid Class"}
+              </span>
+
+            </div>
+
+          </div>
+
+          <div style="
+            display:flex;
+            gap:12px;
+            align-items:end;
+            flex-wrap:wrap;
+            margin-top:20px;
+          ">
+
+            <div style="flex:1;min-width:180px;">
+
+              <label style="display:block;margin-bottom:8px;">
+                Set Class Price (RM)
+              </label>
+
+              <input
+                type="number"
+                id="price-${escapeHtml(c.id)}"
+                min="0"
+                step="0.01"
+                value="${price.toFixed(2)}"
+                placeholder="0.00"
+                style="width:100%;"
+              >
+
+              <small style="opacity:.6;">
+                Enter 0.00 to make this class free.
+              </small>
+
+            </div>
+
+            <button
+              class="primary-btn"
+              onclick="saveClassPrice('${escapeHtml(c.id)}')"
+              style="min-height:44px;"
+            >
+              Save Price
+            </button>
+
+          </div>
+
+        </div>
+      `;
+
+    }).join("");
+
+  } catch (error) {
+
+    console.error("Class Pricing Error:", error);
+
+    $("#pricingList").innerHTML = `
+      <div class="empty">
+        <h3>Unable to load pricing</h3>
+        <p>Please refresh and try again.</p>
+      </div>
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   SAVE CLASS PRICE
+========================================================= */
+
+async function saveClassPrice(classId) {
+
+  if (!state.user || state.role !== "teacher") {
+    alert("Only teachers can update class pricing.");
+    return;
+  }
+
+  const input = document.getElementById(
+    `price-${classId}`
+  );
+
+  if (!input) return;
+
+  const price = Number(input.value);
+
+  if (
+    input.value.trim() === "" ||
+    !Number.isFinite(price) ||
+    price < 0
+  ) {
+    alert("Please enter a valid class price.");
+    return;
+  }
+
+  const button = input.parentElement.querySelector("button");
+
+  try {
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Saving...";
+    }
+
+    const { error } = await supabase
+      .from("classes")
+      .update({
+        price: Number(price.toFixed(2))
+      })
+      .eq("id", classId);
+
+    if (error) throw error;
+
+    alert("Class price updated successfully!");
+
+    await renderClassPricing();
+
+  } catch (error) {
+
+    console.error("Save Class Price Error:", error);
+
+    alert(
+      "Unable to save class price: " +
+      (error.message || "Unknown error")
+    );
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Save Price";
+    }
+
+  }
+
+}
+
+
+/* =========================================================
    LIVE CLASS — LIVEKIT
 ========================================================= */
 
@@ -5058,16 +5345,18 @@ async function openClassDetails(id) {
         )}
       </p>
 
-      <p>
-        <strong>
-          Price:
-        </strong>
+<p>
+  <strong>
+    Price:
+  </strong>
 
-        RM${Number(
-          cls.price || 0
-        ).toFixed(2)}
+  ${
+    Number(cls.price || 0) <= 0
+      ? "FREE"
+      : "RM" + Number(cls.price).toFixed(2)
+  }
 
-      </p>
+</p>
 
     </div>
 
