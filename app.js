@@ -11235,6 +11235,21 @@ async function renderPage() {
 
       break;
 
+      /* =========================
+         CLASS PRICING
+         ========================= */
+
+case "class-pricing":
+
+  if (state.role === "teacher") {
+    await renderClassPricing();
+  } else {
+    state.page = "home";
+    await renderPage();
+  }
+
+  break;
+
   }
 
 }
