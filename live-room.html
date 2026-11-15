@@ -1,0 +1,953 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#17112F">
+<title>Smart Live | Smart Academy</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #100D20;
+  --panel: #17112F;
+  --panel2: #211A3B;
+  --purple: #925CFF;
+  --blue: #398BFF;
+  --lavender: #C9B6FF;
+  --text: #FFFFFF;
+  --muted: #A69DBD;
+  --border: rgba(255,255,255,.09);
+  --danger: #E54868;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, sans-serif;
+  min-height: 100vh;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.topbar {
+  height: 66px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+
+.brand span { color: var(--purple); }
+
+.live-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.live-badge {
+  background: rgba(229,72,104,.15);
+  color: #FF829B;
+  padding: 7px 12px;
+  border-radius: 20px;
+  font-weight: 800;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 320px;
+  gap: 18px;
+  padding: 20px;
+  max-width: 1600px;
+  margin: auto;
+}
+
+.main-area { min-width: 0; }
+
+.video-stage {
+  background: #080711;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  min-height: 420px;
+  aspect-ratio: 16 / 9;
+}
+
+#remoteVideos {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+  gap: 5px;
+  align-content: center;
+}
+
+#remoteVideos video,
+#localVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #17112F;
+}
+
+.local-preview {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 180px;
+  height: 115px;
+  overflow: hidden;
+  border: 2px solid var(--purple);
+  border-radius: 12px;
+  background: #17112F;
+  z-index: 3;
+}
+
+.video-label {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0,0,0,.65);
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.empty-video {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: var(--muted);
+  gap: 12px;
+  pointer-events: none;
+}
+
+.empty-video .camera-icon { font-size: 48px; }
+
+.live-title {
+  margin: 18px 0;
+}
+
+.live-title h2 {
+  margin: 0 0 7px;
+  font-size: 21px;
+}
+
+.live-title p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.control-btn {
+  min-width: 76px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--panel2);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.control-btn .symbol { font-size: 20px; }
+
+.control-btn.active {
+  background: var(--purple);
+}
+
+.control-btn.danger {
+  background: var(--danger);
+}
+
+.control-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.sidebar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+}
+
+.side-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+
+.side-tabs button {
+  padding: 17px 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.side-tabs button.active {
+  color: white;
+  border-bottom: 2px solid var(--purple);
+}
+
+.side-content {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.side-heading {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg,var(--purple),var(--blue));
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+.role {
+  margin-left: auto;
+  color: var(--lavender);
+  font-size: 10px;
+}
+
+.chat-box {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 280px;
+}
+
+.chat-message {
+  padding: 10px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.chat-message strong { color: var(--lavender); }
+
+.chat-input {
+  display: flex;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.chat-input input {
+  min-width: 0;
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: white;
+  outline: none;
+}
+
+.send-btn {
+  background: var(--purple);
+  color: white;
+  border-radius: 10px;
+  padding: 0 15px;
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.status.connected { color: #65D6A2; }
+.status.error { color: #FF829B; }
+
+@media(max-width:850px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .video-stage {
+    min-height: 260px;
+  }
+
+  .sidebar { min-height: 420px; }
+
+  .local-preview {
+    width: 115px;
+    height: 78px;
+  }
+
+  .topbar { padding: 0 14px; }
+}
+
+@media(max-width:480px) {
+  .controls { justify-content: center; }
+  .control-btn { flex: 1 1 25%; }
+  .video-stage { aspect-ratio: 4 / 3; }
+  .live-title h2 { font-size: 18px; }
+}
+</style>
+</head>
+
+<body>
+
+<header class="topbar">
+  <div class="brand">SMART <span>LIVE</span></div>
+
+  <div class="live-info">
+    <span class="live-badge">● LIVE ROOM</span>
+    <span id="participantCount">0 participants</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <section class="main-area">
+
+    <div class="video-stage">
+
+      <div id="remoteVideos"></div>
+
+      <div class="empty-video" id="emptyVideo">
+        <div class="camera-icon">🎥</div>
+        <strong>Smart Live Classroom</strong>
+        <span>Waiting for participants...</span>
+      </div>
+
+      <div class="local-preview">
+        <video id="localVideo" autoplay muted playsinline></video>
+        <div class="video-label">You</div>
+      </div>
+
+    </div>
+
+    <div class="live-title">
+      <h2 id="classTitle">Smart Live Classroom</h2>
+      <p id="roomDescription">Interactive learning session</p>
+    </div>
+
+    <div class="controls">
+
+      <button class="control-btn" id="micBtn">
+        <span class="symbol">🎙️</span>
+        <span>Microphone</span>
+      </button>
+
+      <button class="control-btn" id="cameraBtn">
+        <span class="symbol">📹</span>
+        <span>Camera</span>
+      </button>
+
+      <button class="control-btn" id="screenBtn">
+        <span class="symbol">🖥️</span>
+        <span>Share screen</span>
+      </button>
+
+      <button class="control-btn" id="chatBtn">
+        <span class="symbol">💬</span>
+        <span>Chat</span>
+      </button>
+
+      <button class="control-btn danger" id="leaveBtn">
+        <span class="symbol">📞</span>
+        <span>Leave</span>
+      </button>
+
+    </div>
+
+    <div class="status" id="connectionStatus">
+      Not connected to LiveKit.
+    </div>
+
+  </section>
+
+  <aside class="sidebar">
+
+    <div class="side-tabs">
+      <button class="active" id="peopleTab">Participants</button>
+      <button id="messagesTab">Live chat</button>
+    </div>
+
+    <div class="side-content" id="peoplePanel">
+      <div class="side-heading">People in this room</div>
+
+      <div id="participantsList">
+        <div class="participant">
+          <div class="avatar">Y</div>
+          <span>You</span>
+          <span class="role">You</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-content" id="messagesPanel" hidden>
+      <div class="chat-box">
+        <div class="side-heading">Live comments</div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-message">
+            <strong>Smart Academy:</strong>
+            Welcome to Smart Live!
+          </div>
+        </div>
+
+        <form class="chat-input" id="chatForm">
+          <input id="chatInput"
+            placeholder="Write a message..."
+            maxlength="300"
+            autocomplete="off">
+          <button class="send-btn" type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+
+  </aside>
+
+</main>
+
+<!-- Supabase JS v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- LiveKit Client -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+
+<script>
+/* =====================================================
+   SMART LIVE CONFIGURATION
+===================================================== */
+
+const SUPABASE_URL =
+  "https://efeayniqqqthzfkmwkia.supabase.co";
+
+// Use the same public publishable/anon key as Smart Academy.
+// Never put sb_secret or service_role keys in this file.
+const SUPABASE_ANON_KEY =
+  "sb_publishable_sB4e5aWKf_dmlwmwJWDxjg_r2YBleoD";
+
+const LIVEKIT_URL =
+  "wss://smart-academy-7ph2syol.livekit.cloud";
+
+const LIVEKIT_TOKEN_URL =
+  "https://smart-tuisyen-livekit.norizkandarfaizal.workers.dev/token";
+
+/* =====================================================
+   INITIALIZE SUPABASE
+===================================================== */
+
+const { createClient } = supabase;
+
+const supabaseClient = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+/* =====================================================
+   STATE
+===================================================== */
+
+let room = null;
+let localMicEnabled = false;
+let localCameraEnabled = false;
+let screenShareEnabled = false;
+
+/* =====================================================
+   ELEMENTS
+===================================================== */
+
+const localVideo =
+  document.getElementById("localVideo");
+
+const remoteVideos =
+  document.getElementById("remoteVideos");
+
+const emptyVideo =
+  document.getElementById("emptyVideo");
+
+const connectionStatus =
+  document.getElementById("connectionStatus");
+
+/* =====================================================
+   GET URL PARAMETERS
+===================================================== */
+
+const params = new URLSearchParams(location.search);
+
+const liveClassId = params.get("live_class_id");
+
+if (!liveClassId) {
+  connectionStatus.textContent =
+    "Missing live_class_id. Open Smart Live from your class.";
+  connectionStatus.classList.add("error");
+}
+
+/* =====================================================
+   GET LIVEKIT TOKEN
+===================================================== */
+
+async function getLiveKitToken() {
+  const {
+    data: sessionData,
+    error: sessionError
+  } = await supabaseClient.auth.getSession();
+
+  const accessToken =
+    sessionData?.session?.access_token;
+
+  if (sessionError || !accessToken) {
+    throw new Error("Please login to Smart Academy first.");
+  }
+
+  const response = await fetch(
+    `${LIVEKIT_TOKEN_URL}?live_class_id=${encodeURIComponent(liveClassId)}`,
+    {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok || !result.token) {
+    throw new Error(
+      result.error || "Unable to obtain LiveKit token."
+    );
+  }
+
+  return result.token;
+}
+
+/* =====================================================
+   CONNECT TO LIVEKIT
+===================================================== */
+
+async function connectSmartLive() {
+  try {
+    if (!liveClassId) {
+      throw new Error("Live class ID is missing.");
+    }
+
+    connectionStatus.textContent =
+      "Connecting to Smart Live...";
+
+    const token = await getLiveKitToken();
+
+    room = new LivekitClient.Room({
+      adaptiveStream: true,
+      dynacast: true
+    });
+
+    room.on(
+      LivekitClient.RoomEvent.TrackSubscribed,
+      handleTrackSubscribed
+    );
+
+    room.on(
+      LivekitClient.RoomEvent.TrackUnsubscribed,
+      handleTrackUnsubscribed
+    );
+
+    room.on(
+      LivekitClient.RoomEvent.ParticipantConnected,
+      updateParticipants
+    );
+
+    room.on(
+      LivekitClient.RoomEvent.ParticipantDisconnected,
+      updateParticipants
+    );
+
+    await room.connect(LIVEKIT_URL, token);
+
+    connectionStatus.textContent =
+      "Connected to Smart Live.";
+
+    connectionStatus.className =
+      "status connected";
+
+    updateParticipants();
+
+    emptyVideo.style.display = "none";
+
+  } catch (error) {
+    console.error("Smart Live connection error:", error);
+
+    connectionStatus.textContent =
+      error.message || "Unable to connect.";
+
+    connectionStatus.className =
+      "status error";
+  }
+}
+
+/* =====================================================
+   TRACK SUBSCRIBED
+===================================================== */
+
+function handleTrackSubscribed(track, publication, participant) {
+  const element = track.attach();
+
+  element.dataset.participant = participant.identity;
+
+  if (track.kind === LivekitClient.Track.Kind.Video) {
+    element.autoplay = true;
+    element.playsInline = true;
+  }
+
+  remoteVideos.appendChild(element);
+
+  emptyVideo.style.display = "none";
+
+  updateParticipants();
+}
+
+/* =====================================================
+   TRACK UNSUBSCRIBED
+===================================================== */
+
+function handleTrackUnsubscribed(track) {
+  track.detach().forEach(element => element.remove());
+
+  if (!remoteVideos.children.length) {
+    emptyVideo.style.display = "flex";
+  }
+
+  updateParticipants();
+}
+
+/* =====================================================
+   UPDATE PARTICIPANTS
+===================================================== */
+
+function updateParticipants() {
+  if (!room) return;
+
+  const participants = [
+    room.localParticipant,
+    ...Array.from(room.remoteParticipants.values())
+  ];
+
+  document.getElementById("participantCount").textContent =
+    `${participants.length} participants`;
+
+  const list =
+    document.getElementById("participantsList");
+
+  list.innerHTML = "";
+
+  participants.forEach(participant => {
+    const isLocal =
+      participant === room.localParticipant;
+
+    const name = isLocal
+      ? "You"
+      : participant.identity;
+
+    const item = document.createElement("div");
+
+    item.className = "participant";
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = name.charAt(0).toUpperCase();
+
+    const label = document.createElement("span");
+    label.textContent = name;
+
+    const role = document.createElement("span");
+    role.className = "role";
+    role.textContent = isLocal ? "You" : "Participant";
+
+    item.append(avatar, label, role);
+
+    list.appendChild(item);
+  });
+}
+
+/* =====================================================
+   MICROPHONE
+===================================================== */
+
+document.getElementById("micBtn")
+  .addEventListener("click", async () => {
+    try {
+      if (!room) {
+        throw new Error("Connect to a live room first.");
+      }
+
+      localMicEnabled = !localMicEnabled;
+
+      await room.localParticipant.setMicrophoneEnabled(
+        localMicEnabled
+      );
+
+      const btn =
+        document.getElementById("micBtn");
+
+      btn.classList.toggle("active", localMicEnabled);
+
+      btn.querySelector(".symbol").textContent =
+        localMicEnabled ? "🎙️" : "🔇";
+
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+/* =====================================================
+   CAMERA
+===================================================== */
+
+document.getElementById("cameraBtn")
+  .addEventListener("click", async () => {
+    try {
+      if (!room) {
+        throw new Error("Connect to a live room first.");
+      }
+
+      localCameraEnabled = !localCameraEnabled;
+
+      await room.localParticipant.setCameraEnabled(
+        localCameraEnabled
+      );
+
+      if (localCameraEnabled) {
+        const publication =
+          room.localParticipant.getTrackPublication(
+            LivekitClient.Track.Source.Camera
+          );
+
+        if (publication?.track) {
+          localVideo.srcObject =
+            new MediaStream([
+              publication.track.mediaStreamTrack
+            ]);
+
+          localVideo.play().catch(() => {});
+        }
+      } else {
+        localVideo.srcObject = null;
+      }
+
+      const btn =
+        document.getElementById("cameraBtn");
+
+      btn.classList.toggle(
+        "active",
+        localCameraEnabled
+      );
+
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+/* =====================================================
+   SCREEN SHARING
+===================================================== */
+
+document.getElementById("screenBtn")
+  .addEventListener("click", async () => {
+    try {
+      if (!room) {
+        throw new Error("Connect to a live room first.");
+      }
+
+      screenShareEnabled = !screenShareEnabled;
+
+      await room.localParticipant.setScreenShareEnabled(
+        screenShareEnabled
+      );
+
+      const btn =
+        document.getElementById("screenBtn");
+
+      btn.classList.toggle(
+        "active",
+        screenShareEnabled
+      );
+
+      btn.querySelector(".symbol").textContent =
+        screenShareEnabled ? "⏹️" : "🖥️";
+
+    } catch (error) {
+      screenShareEnabled = false;
+      alert(error.message);
+    }
+  });
+
+/* =====================================================
+   CHAT UI
+   Local preview only. Realtime chat will be connected
+   in the next phase.
+===================================================== */
+
+document.getElementById("chatForm")
+  .addEventListener("submit", event => {
+    event.preventDefault();
+
+    const input =
+      document.getElementById("chatInput");
+
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    const item =
+      document.createElement("div");
+
+    item.className = "chat-message";
+
+    const sender = document.createElement("strong");
+    sender.textContent = "You: ";
+
+    item.append(sender, document.createTextNode(message));
+
+    document.getElementById("chatMessages")
+      .appendChild(item);
+
+    input.value = "";
+
+    item.scrollIntoView({
+      behavior: "smooth",
+      block: "end"
+    });
+  });
+
+/* =====================================================
+   SIDEBAR TABS
+===================================================== */
+
+const peopleTab =
+  document.getElementById("peopleTab");
+
+const messagesTab =
+  document.getElementById("messagesTab");
+
+peopleTab.addEventListener("click", () => {
+  peopleTab.classList.add("active");
+  messagesTab.classList.remove("active");
+
+  document.getElementById("peoplePanel").hidden = false;
+  document.getElementById("messagesPanel").hidden = true;
+});
+
+messagesTab.addEventListener("click", () => {
+  messagesTab.classList.add("active");
+  peopleTab.classList.remove("active");
+
+  document.getElementById("messagesPanel").hidden = false;
+  document.getElementById("peoplePanel").hidden = true;
+});
+
+document.getElementById("chatBtn")
+  .addEventListener("click", () => {
+    messagesTab.click();
+  });
+
+/* =====================================================
+   LEAVE LIVE
+===================================================== */
+
+document.getElementById("leaveBtn")
+  .addEventListener("click", async () => {
+    if (!confirm("Leave this live classroom?")) {
+      return;
+    }
+
+    if (room) {
+      await room.disconnect();
+      room = null;
+    }
+
+    location.href = "./index.html";
+  });
+
+/* =====================================================
+   INITIALIZE
+===================================================== */
+
+// Wait for Supabase session before connecting.
+(async function init() {
+  if (!liveClassId) return;
+
+  const {
+    data: sessionData,
+    error
+  } = await supabaseClient.auth.getSession();
+
+  if (error || !sessionData?.session) {
+    connectionStatus.textContent =
+      "Please login to Smart Academy first.";
+
+    connectionStatus.classList.add("error");
+    return;
+  }
+
+  await connectSmartLive();
+})();
+</script>
+
+</body>
+</html>
