@@ -3959,7 +3959,7 @@ async function startLiveClass(classId) {
     const token =
   await getLiveKitToken(
     roomName,
-    liveId
+    data.id
   );
 
     /* -----------------------------------------
@@ -4628,10 +4628,10 @@ async function joinLiveClass(
     ----------------------------------------- */
 
     const token =
-      await getLiveKitToken(
-        roomName
-      );
-
+  await getLiveKitToken(
+    roomName,
+    liveClass.id
+  );
 
     /* -----------------------------------------
        Create room
