@@ -3628,40 +3628,51 @@ let liveRoom = null;
 let livePreviewStream = null;
 
 
+
 /* =========================================================
-   GET LIVEKIT TOKEN
+   GET LIVEKIT TOKEN — WITH CLASS ACCESS CHECK
 ========================================================= */
 
-async function getLiveKitToken(roomName) {
+
+async function getLiveKitToken(roomName, liveClassId) {
 
   if (!state.user?.id) {
     throw new Error("You must be logged in.");
   }
 
-  const identity =
-    `${state.role}-${state.user.id}`;
+  if (!liveClassId) {
+    throw new Error("Live class ID is required.");
+  }
+
+  const { data: sessionData, error: sessionError } =
+    await supabaseClient.auth.getSession();
+
+  const accessToken = sessionData?.session?.access_token;
+
+  if (sessionError || !accessToken) {
+    throw new Error("Your login session has expired.");
+  }
 
   const url =
-    `${LIVEKIT_TOKEN_URL}?room=${encodeURIComponent(roomName)}&identity=${encodeURIComponent(identity)}`;
+    `${LIVEKIT_TOKEN_URL}?live_class_id=${encodeURIComponent(liveClassId)}`;
 
-  const response =
-    await fetch(url, {
-      method: "GET"
-    });
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`
+    }
+  });
 
-  const result =
-    await response.json();
+  const result = await response.json();
 
   if (!response.ok || !result.token) {
     throw new Error(
-      result.error ||
-      "Unable to get LiveKit token."
+      result.error || "Unable to get LiveKit token."
     );
   }
 
   return result.token;
 }
-
 
 /* =========================================================
    START LIVE MODAL — TEACHER
