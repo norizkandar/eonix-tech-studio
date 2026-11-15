@@ -1,23 +1,30 @@
 
 /* =========================================================
-   SMART ACADEMY
-   PREMIUM DESIGN SYSTEM V8
+   SMART ACADEMY — PREMIUM DESIGN SYSTEM V9
    EONIX TECH STUDIO
-   ---------------------------------------------------------
-   Dark Purple : #17112F
-   Neon Purple : #925CFF
-   Electric Blue: #398BFF
-   Lavender    : #C9B6FF
-   ========================================================= */
+   Main application stylesheet: styles.css
+
+   Palette:
+   Dark Purple  #17112F
+   Neon Purple  #925CFF
+   Electric Blue #398BFF
+   Lavender     #C9B6FF
+
+   Supports:
+   Login / Signup
+   Student / Teacher / Parent / Admin
+   Dashboard / Sidebar / Topbar
+   Tables / Forms / Cards / Modal
+   Notifications / Mobile Navigation
+========================================================= */
 
 
 /* =========================================================
-   01. DESIGN TOKENS — LIGHT MODE
-   ========================================================= */
+   01. THEME TOKENS — LIGHT
+========================================================= */
 
 :root,
 :root[data-theme="light"] {
-
   color-scheme: light;
 
   --bg: #F7F6FC;
@@ -59,7 +66,7 @@
   --sidebar-text: #756D88;
   --sidebar-active: #F0E8FF;
 
-  --topbar-bg: rgba(255,255,255,.88);
+  --topbar-bg: rgba(255,255,255,.90);
 
   --shadow-xs: 0 2px 8px rgba(35,20,65,.04);
   --shadow-sm: 0 5px 18px rgba(35,20,65,.06);
@@ -74,19 +81,17 @@
   --radius-full: 999px;
 
   --sidebar-width: 258px;
-  --topbar-height: 78px;
+  --topbar-height: 76px;
 
   --transition: .22s ease;
-
 }
 
 
 /* =========================================================
-   02. DESIGN TOKENS — DARK MODE
-   ========================================================= */
+   02. THEME TOKENS — DARK
+========================================================= */
 
 :root[data-theme="dark"] {
-
   color-scheme: dark;
 
   --bg: #0D0A18;
@@ -128,19 +133,18 @@
   --sidebar-text: #A69ABF;
   --sidebar-active: #30204F;
 
-  --topbar-bg: rgba(17,12,32,.88);
+  --topbar-bg: rgba(17,12,32,.90);
 
   --shadow-xs: 0 2px 8px rgba(0,0,0,.14);
   --shadow-sm: 0 5px 18px rgba(0,0,0,.19);
   --shadow-md: 0 12px 35px rgba(0,0,0,.24);
   --shadow-lg: 0 24px 65px rgba(0,0,0,.34);
-
 }
 
 
 /* =========================================================
-   03. RESET
-   ========================================================= */
+   03. GLOBAL RESET
+========================================================= */
 
 * {
   box-sizing: border-box;
@@ -168,8 +172,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 
   transition:
-    background var(--transition),
-    color var(--transition);
+    color var(--transition),
+    background var(--transition);
 }
 
 button,
@@ -194,6 +198,11 @@ textarea {
   min-width: 0;
 }
 
+img {
+  display: block;
+  max-width: 100%;
+}
+
 a {
   color: var(--primary);
   text-decoration: none;
@@ -201,11 +210,6 @@ a {
 
 a:hover {
   color: var(--primary-hover);
-}
-
-img {
-  display: block;
-  max-width: 100%;
 }
 
 ::selection {
@@ -231,7 +235,7 @@ img {
 
 /* =========================================================
    04. SCROLLBAR
-   ========================================================= */
+========================================================= */
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -254,8 +258,9 @@ img {
 
 /* =========================================================
    05. SPLASH SCREEN
-   ========================================================= */
+========================================================= */
 
+#splash,
 .splash {
   position: fixed;
   inset: 0;
@@ -268,7 +273,6 @@ img {
   padding: 25px;
 
   color: #FFFFFF;
-
   background:
     radial-gradient(
       ellipse at 50% 35%,
@@ -299,15 +303,9 @@ img {
   flex-shrink: 0;
 
   color: #FFFFFF;
-
   font-weight: 900;
 
-  background:
-    linear-gradient(
-      135deg,
-      #925CFF,
-      #398BFF
-    );
+  background: linear-gradient(135deg,#925CFF,#398BFF);
 
   box-shadow:
     0 10px 35px rgba(146,92,255,.3),
@@ -317,20 +315,15 @@ img {
 .logo-orb {
   width: 84px;
   height: 84px;
-
   margin-bottom: 25px;
-
   border-radius: 26px;
-
   font-size: 28px;
   letter-spacing: -2px;
 }
 
 .splash h1 {
   margin: 0;
-
   color: #FFFFFF;
-
   font-size: clamp(27px,5vw,43px);
   font-weight: 900;
   letter-spacing: 2px;
@@ -338,9 +331,7 @@ img {
 
 .splash p {
   margin: 12px 0 25px;
-
   color: #C9B6FF;
-
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 4px;
@@ -355,55 +346,37 @@ img {
 .splash-loader {
   width: 115px;
   height: 3px;
-
   overflow: hidden;
-
   border-radius: 20px;
-
   background: rgba(255,255,255,.1);
 }
 
 .splash-loader::after {
   content: "";
-
   display: block;
-
   width: 45%;
   height: 100%;
-
   border-radius: inherit;
-
-  background: linear-gradient(
-    90deg,
-    #925CFF,
-    #398BFF
-  );
-
+  background: linear-gradient(90deg,#925CFF,#398BFF);
   animation: splash-loading 1.2s ease-in-out infinite;
 }
 
 @keyframes splash-loading {
-  from {
-    transform: translateX(-110%);
-  }
-
-  to {
-    transform: translateX(240%);
-  }
+  from { transform: translateX(-110%); }
+  to { transform: translateX(240%); }
 }
 
 
 /* =========================================================
-   06. AUTHENTICATION SCREEN
-   ========================================================= */
+   06. AUTHENTICATION
+========================================================= */
 
+#authScreen,
 .auth-screen {
   min-height: 100vh;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   padding: 35px;
 
   background:
@@ -422,66 +395,41 @@ img {
 
 .auth-layout {
   display: grid;
-
   width: 100%;
   max-width: 1120px;
   min-height: 650px;
-
   grid-template-columns: 1.05fr .95fr;
-
   overflow: hidden;
 
   border: 1px solid var(--border);
   border-radius: 28px;
-
   background: var(--surface);
-
   box-shadow: var(--shadow-lg);
 }
 
 .auth-promo {
   position: relative;
-
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-
   overflow: hidden;
-
   padding: 45px;
 
   color: #FFFFFF;
-
   background:
-    radial-gradient(
-      circle at 90% 10%,
-      rgba(146,92,255,.36),
-      transparent 32%
-    ),
-    radial-gradient(
-      circle at 5% 95%,
-      rgba(57,139,255,.28),
-      transparent 38%
-    ),
-    linear-gradient(
-      145deg,
-      #17112F,
-      #100B21
-    );
+    radial-gradient(circle at 90% 10%,rgba(146,92,255,.36),transparent 32%),
+    radial-gradient(circle at 5% 95%,rgba(57,139,255,.28),transparent 38%),
+    linear-gradient(145deg,#17112F,#100B21);
 }
 
 .auth-promo::before,
 .auth-promo::after {
   content: "";
-
   position: absolute;
-
   width: 260px;
   height: 260px;
-
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 50%;
-
   pointer-events: none;
 }
 
@@ -498,7 +446,6 @@ img {
 .promo-brand {
   position: relative;
   z-index: 1;
-
   display: flex;
   align-items: center;
   gap: 12px;
@@ -507,9 +454,7 @@ img {
 .promo-brand .brand-orb {
   width: 46px;
   height: 46px;
-
   border-radius: 14px;
-
   font-size: 15px;
 }
 
@@ -525,9 +470,7 @@ img {
 
 .promo-brand span {
   margin-top: 3px;
-
   color: #C9B6FF;
-
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 2px;
@@ -536,7 +479,6 @@ img {
 .promo-main {
   position: relative;
   z-index: 1;
-
   margin: 45px 0;
 }
 
@@ -544,27 +486,19 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-
   padding: 8px 13px;
-
   border: 1px solid rgba(201,182,255,.25);
   border-radius: 999px;
-
   color: #DCCEFF;
   background: rgba(255,255,255,.06);
-
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: .8px;
 }
 
 .promo-main h1 {
   max-width: 450px;
-
   margin: 23px 0 15px;
-
   color: #FFFFFF;
-
   font-size: clamp(37px,4vw,53px);
   line-height: 1.12;
   letter-spacing: -2.5px;
@@ -576,9 +510,7 @@ img {
 
 .promo-main p {
   max-width: 400px;
-
-  color: #B9ADCf;
-
+  color: #B9ADCF;
   font-size: 13px;
   line-height: 1.9;
 }
@@ -586,7 +518,6 @@ img {
 .promo-features {
   display: grid;
   gap: 13px;
-
   margin-top: 30px;
 }
 
@@ -594,9 +525,7 @@ img {
   display: flex;
   align-items: center;
   gap: 12px;
-
   color: #E5DDF7;
-
   font-size: 12px;
 }
 
@@ -604,53 +533,40 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 27px;
   height: 27px;
-
   flex-shrink: 0;
-
   border-radius: 9px;
-
   color: #C9B6FF;
   background: rgba(146,92,255,.2);
-
   font-weight: 900;
 }
 
 .promo-footer {
   position: relative;
   z-index: 1;
-
   color: #8F84A9;
-
   font-size: 10px;
 }
 
 
 /* =========================================================
-   07. AUTHENTICATION FORM
-   ========================================================= */
+   07. AUTH FORM
+========================================================= */
 
 .auth-form-side {
   display: flex;
   align-items: center;
   justify-content: center;
-
   padding: 45px;
-
   background: var(--surface);
 }
 
 .auth-card {
   width: 100%;
   max-width: 375px;
-
   padding: 0;
-
   border: 0;
-  border-radius: 0;
-
   color: var(--text);
   background: transparent;
   box-shadow: none;
@@ -658,9 +574,7 @@ img {
 
 .brand-mini {
   margin-bottom: 25px;
-
   color: var(--primary);
-
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 2px;
@@ -668,9 +582,7 @@ img {
 
 .auth-card h2 {
   margin: 0 0 9px;
-
   color: var(--text);
-
   font-size: 30px;
   font-weight: 850;
   letter-spacing: -1px;
@@ -678,9 +590,7 @@ img {
 
 .auth-card > p {
   margin: 0 0 28px;
-
   color: var(--muted);
-
   font-size: 13px;
   line-height: 1.8;
 }
@@ -699,9 +609,7 @@ img {
 
 .auth-card label {
   margin-top: 5px;
-
   color: var(--text-secondary);
-
   font-size: 11px;
   font-weight: 700;
 }
@@ -710,39 +618,23 @@ img {
 .auth-card select {
   width: 100%;
   min-height: 49px;
-
   padding: 13px 15px;
-
   border: 1px solid var(--border);
   border-radius: 12px;
-
   outline: none;
-
   color: var(--text);
   background: var(--bg);
-
   font-size: 13px;
-
-  transition:
-    border-color var(--transition),
-    box-shadow var(--transition);
-}
-
-.auth-card input::placeholder {
-  color: var(--muted);
 }
 
 .auth-card input:focus,
 .auth-card select:focus {
   border-color: var(--primary);
-
-  box-shadow:
-    0 0 0 4px rgba(146,92,255,.12);
+  box-shadow: 0 0 0 4px rgba(146,92,255,.12);
 }
 
-.auth-card select option {
-  color: var(--text);
-  background: var(--surface);
+.auth-card input::placeholder {
+  color: var(--muted);
 }
 
 .primary-btn {
@@ -750,61 +642,34 @@ img {
   align-items: center;
   justify-content: center;
   gap: 8px;
-
   width: 100%;
   min-height: 49px;
-
   margin-top: 8px;
   padding: 12px 18px;
-
   border: 0;
   border-radius: 12px;
-
   color: #FFFFFF;
-
-  background:
-    linear-gradient(
-      110deg,
-      #925CFF,
-      #6940D8
-    );
-
-  box-shadow:
-    0 8px 22px rgba(146,92,255,.22);
-
+  background: linear-gradient(110deg,#925CFF,#6940D8);
+  box-shadow: 0 8px 22px rgba(146,92,255,.22);
   font-size: 13px;
   font-weight: 800;
-
-  transition:
-    transform var(--transition),
-    box-shadow var(--transition);
+  transition: var(--transition);
 }
 
 .primary-btn:hover {
   transform: translateY(-2px);
-
-  box-shadow:
-    0 12px 28px rgba(146,92,255,.3);
-}
-
-.primary-btn:active {
-  transform: translateY(0);
+  box-shadow: 0 12px 28px rgba(146,92,255,.3);
 }
 
 .text-btn {
   display: block;
-
   width: 100%;
-
   margin-top: 16px;
   padding: 10px;
-
   border: 0;
   border-radius: 10px;
-
   color: var(--primary);
   background: transparent;
-
   font-size: 12px;
   font-weight: 750;
 }
@@ -815,11 +680,8 @@ img {
 
 .message {
   min-height: 20px;
-
   margin-top: 13px;
-
   color: var(--muted);
-
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -828,20 +690,15 @@ img {
   display: flex;
   flex-direction: column;
   gap: 3px;
-
   margin-top: 32px;
   padding-top: 18px;
-
   border-top: 1px solid var(--border);
-
   color: var(--muted);
-
   font-size: 10px;
 }
 
 .auth-bottom strong {
   color: var(--text-secondary);
-
   font-size: 9px;
   letter-spacing: 1.5px;
 }
@@ -849,35 +706,34 @@ img {
 
 /* =========================================================
    08. APPLICATION SHELL
-   ========================================================= */
+   FIX: Sidebar is fixed; main content offsets once only.
+========================================================= */
 
+#appShell,
 .app-shell {
   display: flex;
-
-  min-height: 100vh;
   width: 100%;
+  min-height: 100vh;
 }
 
 .main-area {
   display: flex;
+  flex: 1;
   flex-direction: column;
-
   width: calc(100% - var(--sidebar-width));
   min-width: 0;
   min-height: 100vh;
-
   margin-left: var(--sidebar-width);
 }
 
 
 /* =========================================================
    09. SIDEBAR
-   ========================================================= */
+========================================================= */
 
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
-
   z-index: 100;
 
   display: flex;
@@ -885,14 +741,12 @@ img {
 
   width: var(--sidebar-width);
   height: 100vh;
-
   padding: 23px 15px;
 
   overflow-x: hidden;
   overflow-y: auto;
 
   border-right: 1px solid var(--border);
-
   color: var(--sidebar-text);
   background: var(--sidebar-bg);
 
@@ -905,18 +759,14 @@ img {
   display: flex;
   align-items: center;
   gap: 11px;
-
   padding: 3px 9px 25px;
-
   border-bottom: 1px solid var(--border);
 }
 
 .sidebar-brand .brand-orb {
   width: 43px;
   height: 43px;
-
   border-radius: 13px;
-
   font-size: 14px;
 }
 
@@ -928,7 +778,6 @@ img {
 
 .sidebar-brand-text strong {
   color: var(--text);
-
   font-size: 14px;
   font-weight: 900;
   letter-spacing: 1px;
@@ -936,7 +785,6 @@ img {
 
 .sidebar-brand-text span {
   color: var(--muted);
-
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 2px;
@@ -944,9 +792,7 @@ img {
 
 .sidebar-label {
   margin: 25px 11px 10px;
-
   color: var(--muted);
-
   font-size: 9px;
   font-weight: 900;
   letter-spacing: 1.6px;
@@ -957,7 +803,6 @@ img {
   flex: 1;
   flex-direction: column;
   gap: 5px;
-
   min-height: 100px;
 }
 
@@ -968,28 +813,18 @@ img {
   display: flex;
   align-items: center;
   gap: 11px;
-
   width: 100%;
   min-height: 44px;
-
   padding: 11px 13px;
-
   border: 0;
   border-radius: 11px;
-
   color: var(--sidebar-text);
   background: transparent;
-
   text-align: left;
   text-decoration: none;
-
   font-size: 12px;
   font-weight: 600;
-
-  transition:
-    background var(--transition),
-    color var(--transition),
-    transform var(--transition);
+  transition: var(--transition);
 }
 
 #sidebarNav a:hover,
@@ -1004,17 +839,8 @@ img {
 #sidebarNav [aria-current="page"],
 #sidebarNav .active a {
   color: var(--primary);
-
   background: var(--sidebar-active);
-
   font-weight: 800;
-}
-
-#sidebarNav a:focus-visible,
-#sidebarNav button:focus-visible,
-.sidebar-footer button:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
 }
 
 .sidebar-bottom {
@@ -1026,12 +852,9 @@ img {
   display: flex;
   align-items: center;
   gap: 10px;
-
   padding: 12px;
-
   border: 1px solid var(--border);
   border-radius: 13px;
-
   background: var(--surface-2);
 }
 
@@ -1039,12 +862,9 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 32px;
   height: 32px;
-
   border-radius: 10px;
-
   color: #FFFFFF;
   background: linear-gradient(135deg,#925CFF,#398BFF);
 }
@@ -1056,7 +876,6 @@ img {
 
 .sidebar-plan strong {
   color: var(--text);
-
   font-size: 10px;
   font-weight: 800;
 }
@@ -1070,34 +889,28 @@ img {
   display: flex;
   flex-direction: column;
   gap: 5px;
-
   margin-top: 14px;
   padding-top: 12px;
-
   border-top: 1px solid var(--border);
 }
 
 .sidebar-copyright {
   margin-top: 16px;
-
   color: var(--muted);
-
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 1px;
-
   text-align: center;
 }
 
 
 /* =========================================================
    10. TOPBAR
-   ========================================================= */
+========================================================= */
 
 .topbar {
   position: sticky;
   top: 0;
-
   z-index: 80;
 
   display: flex;
@@ -1107,11 +920,9 @@ img {
 
   width: 100%;
   min-height: var(--topbar-height);
-
   padding: 13px 27px;
 
   border-bottom: 1px solid var(--border);
-
   background: var(--topbar-bg);
 
   backdrop-filter: blur(18px);
@@ -1122,7 +933,6 @@ img {
   display: flex;
   align-items: center;
   gap: 13px;
-
   flex-shrink: 0;
 }
 
@@ -1133,7 +943,6 @@ img {
 
 .topbar-eyebrow {
   color: var(--muted);
-
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 1.7px;
@@ -1141,19 +950,15 @@ img {
 
 .topbar-heading strong {
   color: var(--text);
-
   font-size: 13px;
   font-weight: 800;
 }
 
 .search-wrap {
   position: relative;
-
   display: flex;
   align-items: center;
-
   flex: 1;
-
   width: 100%;
   max-width: 540px;
   min-width: 100px;
@@ -1162,20 +967,13 @@ img {
 .search-wrap input {
   width: 100%;
   min-height: 43px;
-
   padding: 10px 45px 10px 40px;
-
   border: 1px solid transparent;
   border-radius: 12px;
-
   outline: none;
-
   color: var(--text);
   background: var(--bg-secondary);
-
   font-size: 11px;
-
-  transition: border-color var(--transition);
 }
 
 .search-wrap input:focus {
@@ -1189,26 +987,19 @@ img {
 .search-icon {
   position: absolute;
   left: 14px;
-
   color: var(--muted);
-
   font-size: 19px;
-
   pointer-events: none;
 }
 
 .search-wrap kbd {
   position: absolute;
   right: 12px;
-
   padding: 3px 6px;
-
   border: 1px solid var(--border);
   border-radius: 5px;
-
   color: var(--muted);
   background: var(--surface);
-
   font-size: 9px;
 }
 
@@ -1220,33 +1011,22 @@ img {
 
 .icon-btn {
   position: relative;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   flex-shrink: 0;
-
   width: 41px;
   height: 41px;
-
   border: 1px solid var(--border);
   border-radius: 12px;
-
   color: var(--text-secondary);
   background: var(--surface);
-
   font-size: 16px;
-
-  transition:
-    color var(--transition),
-    background var(--transition),
-    border-color var(--transition);
+  transition: var(--transition);
 }
 
 .icon-btn:hover {
   color: var(--primary);
-
   border-color: var(--primary);
   background: var(--primary-soft);
 }
@@ -1254,9 +1034,7 @@ img {
 .topbar-divider {
   width: 1px;
   height: 28px;
-
   margin: 0 5px;
-
   background: var(--border);
 }
 
@@ -1264,14 +1042,10 @@ img {
   position: absolute;
   top: 8px;
   right: 8px;
-
   width: 7px;
   height: 7px;
-
   border: 1px solid var(--surface);
-
   border-radius: 50%;
-
   background: var(--danger);
 }
 
@@ -1282,31 +1056,20 @@ img {
 
 /* =========================================================
    11. AVATAR
-   ========================================================= */
+========================================================= */
 
 .avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-
   flex-shrink: 0;
-
   width: 41px;
   height: 41px;
-
   overflow: hidden;
-
   border: 2px solid var(--border);
   border-radius: 50%;
-
   color: #FFFFFF;
-
-  background: linear-gradient(
-    135deg,
-    #925CFF,
-    #398BFF
-  );
-
+  background: linear-gradient(135deg,#925CFF,#398BFF);
   font-size: 13px;
   font-weight: 900;
 }
@@ -1314,39 +1077,41 @@ img {
 .avatar img {
   width: 100%;
   height: 100%;
-
   object-fit: cover;
 }
 
 
 /* =========================================================
    12. MAIN CONTENT
-   ========================================================= */
+========================================================= */
 
+#content,
 .content {
   flex: 1;
-
   width: 100%;
   min-width: 0;
-
   padding: 30px;
-
   color: var(--text);
 }
 
+#content > *,
 .content > * {
   max-width: 100%;
 }
 
+#content h1,
+#content h2,
+#content h3,
+#content h4,
 .content h1,
 .content h2,
 .content h3,
-.content h4,
-.content h5 {
+.content h4 {
   color: var(--text);
   line-height: 1.35;
 }
 
+#content h1,
 .content h1 {
   margin-top: 0;
   font-size: clamp(24px,3vw,31px);
@@ -1354,29 +1119,39 @@ img {
   letter-spacing: -1px;
 }
 
+#content h2,
 .content h2 {
   font-size: 21px;
   font-weight: 800;
 }
 
+#content h3,
 .content h3 {
   font-size: 16px;
   font-weight: 750;
 }
 
+#content p,
 .content p {
   color: var(--text-secondary);
 }
 
+#content small,
 .content small {
   color: var(--muted);
 }
 
 
 /* =========================================================
-   13. CONTENT CARDS
-   ========================================================= */
+   13. CARDS AND PANELS
+========================================================= */
 
+#content .card,
+#content .panel,
+#content .stat-card,
+#content .dashboard-card,
+#content .widget,
+#content .section-card,
 .content .card,
 .content .panel,
 .content .stat-card,
@@ -1384,23 +1159,20 @@ img {
 .content .widget,
 .content .section-card {
   min-width: 0;
-
   padding: 20px;
-
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-
   color: var(--text);
   background: var(--surface);
-
   box-shadow: var(--shadow-xs);
-
   transition:
     border-color var(--transition),
-    box-shadow var(--transition),
-    transform var(--transition);
+    box-shadow var(--transition);
 }
 
+#content .card:hover,
+#content .dashboard-card:hover,
+#content .widget:hover,
 .content .card:hover,
 .content .dashboard-card:hover,
 .content .widget:hover {
@@ -1408,16 +1180,10 @@ img {
   box-shadow: var(--shadow-sm);
 }
 
-.content .card h3,
-.content .panel h3,
-.content .stat-card h3 {
-  margin-top: 0;
-}
-
 
 /* =========================================================
-   14. DASHBOARD HEADERS
-   ========================================================= */
+   14. HEADERS
+========================================================= */
 
 .section-header,
 .page-header,
@@ -1426,7 +1192,6 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 15px;
-
   margin-bottom: 23px;
 }
 
@@ -1440,25 +1205,20 @@ img {
 .page-header p,
 .dashboard-header p {
   margin: 6px 0 0;
-
   color: var(--muted);
-
   font-size: 12px;
 }
 
 
 /* =========================================================
    15. GRID SYSTEM
-   ========================================================= */
+========================================================= */
 
 .stats-grid,
 .stat-grid {
   display: grid;
-
   grid-template-columns: repeat(4,minmax(0,1fr));
-
   gap: 16px;
-
   margin-bottom: 23px;
 }
 
@@ -1466,76 +1226,55 @@ img {
 .cards-grid,
 .card-grid {
   display: grid;
-
   grid-template-columns: repeat(3,minmax(0,1fr));
-
   gap: 18px;
 }
 
 .grid-2 {
   display: grid;
-
   grid-template-columns: repeat(2,minmax(0,1fr));
-
   gap: 18px;
 }
 
-.grid-3 {
-  display: grid;
-
-  grid-template-columns: repeat(3,minmax(0,1fr));
-
-  gap: 18px;
-}
-
+.grid-3,
 .three-column-grid {
   display: grid;
-
   grid-template-columns: repeat(3,minmax(0,1fr));
-
   gap: 18px;
 }
 
-.content .full-width {
+.full-width {
   grid-column: 1 / -1;
 }
 
 
 /* =========================================================
    16. STAT CARDS
-   ========================================================= */
+========================================================= */
 
-.content .stat-card {
+.stat-card {
   position: relative;
-
   overflow: hidden;
-
   min-height: 140px;
 }
 
 .stat-card::after {
   content: "";
-
   position: absolute;
   top: -35px;
   right: -35px;
-
   width: 100px;
   height: 100px;
-
   border-radius: 50%;
-
   background: var(--primary-soft);
-
   opacity: .65;
+  pointer-events: none;
 }
 
 .stat-card .stat-label {
   position: relative;
   z-index: 1;
-
   color: var(--muted);
-
   font-size: 11px;
   font-weight: 700;
 }
@@ -1543,11 +1282,8 @@ img {
 .stat-card .stat-value {
   position: relative;
   z-index: 1;
-
   margin-top: 12px;
-
   color: var(--text);
-
   font-size: 29px;
   font-weight: 900;
   letter-spacing: -1px;
@@ -1556,11 +1292,8 @@ img {
 .stat-card .stat-change {
   position: relative;
   z-index: 1;
-
   margin-top: 6px;
-
   color: var(--success);
-
   font-size: 10px;
   font-weight: 750;
 }
@@ -1568,31 +1301,25 @@ img {
 .stat-icon {
   position: relative;
   z-index: 1;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 38px;
   height: 38px;
-
   margin-bottom: 13px;
-
   border-radius: 12px;
-
   color: var(--primary);
   background: var(--primary-soft);
-
   font-size: 17px;
 }
 
 
 /* =========================================================
-   17. BUTTON SYSTEM
-   ========================================================= */
+   17. BUTTONS
+========================================================= */
 
-.content button,
-.content .btn {
+#content button,
+.content button {
   font-family: inherit;
 }
 
@@ -1603,20 +1330,14 @@ img {
   align-items: center;
   justify-content: center;
   gap: 8px;
-
   min-height: 40px;
-
   padding: 9px 15px;
-
   border: 1px solid var(--border);
   border-radius: 10px;
-
   color: var(--text);
   background: var(--surface);
-
   font-size: 11px;
   font-weight: 750;
-
   transition: var(--transition);
 }
 
@@ -1624,112 +1345,104 @@ img {
 .secondary-btn:hover,
 .outline-btn:hover {
   color: var(--primary);
-
   border-color: var(--primary);
   background: var(--primary-soft);
 }
 
 .btn-primary,
+#content button.primary,
 .content button.primary,
+#content .btn-primary,
 .content .btn-primary {
   color: #FFFFFF;
-
   border-color: transparent;
-
-  background: linear-gradient(
-    110deg,
-    #925CFF,
-    #7043DC
-  );
+  background: linear-gradient(110deg,#925CFF,#7043DC);
 }
 
 .btn-primary:hover,
+#content button.primary:hover,
 .content button.primary:hover,
+#content .btn-primary:hover,
 .content .btn-primary:hover {
   color: #FFFFFF;
-
   transform: translateY(-1px);
-
   box-shadow: var(--shadow-sm);
 }
 
 .btn-danger {
   color: var(--danger);
-
   border-color: transparent;
-
   background: var(--danger-soft);
 }
 
 .btn-success {
   color: var(--success);
-
   border-color: transparent;
-
   background: var(--success-soft);
 }
 
 
 /* =========================================================
-   18. FORMS
-   ========================================================= */
+   18. CONTENT FORMS
+   Keep checkbox/radio dimensions natural.
+========================================================= */
 
-.content input,
+#content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+#content select,
+#content textarea,
+.content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .content select,
 .content textarea {
   width: 100%;
   max-width: 100%;
-
   min-height: 42px;
-
   padding: 10px 13px;
-
   border: 1px solid var(--border);
   border-radius: 10px;
-
   outline: none;
-
   color: var(--text);
   background: var(--surface);
-
   font-size: 12px;
-
-  transition:
-    border-color var(--transition),
-    box-shadow var(--transition);
+  transition: var(--transition);
 }
 
+#content input:focus,
+#content select:focus,
+#content textarea:focus,
 .content input:focus,
 .content select:focus,
 .content textarea:focus {
   border-color: var(--primary);
-
-  box-shadow:
-    0 0 0 3px rgba(146,92,255,.12);
+  box-shadow: 0 0 0 3px rgba(146,92,255,.12);
 }
 
+#content input::placeholder,
+#content textarea::placeholder,
 .content input::placeholder,
 .content textarea::placeholder {
   color: var(--muted);
 }
 
+#content input[type="checkbox"],
+#content input[type="radio"],
+.content input[type="checkbox"],
+.content input[type="radio"] {
+  width: auto;
+  min-height: auto;
+  accent-color: var(--primary);
+}
+
+#content textarea,
 .content textarea {
   min-height: 110px;
   resize: vertical;
 }
 
-.content select option {
-  color: var(--text);
-  background: var(--surface);
-}
-
+#content label,
 .content label {
   display: block;
-
   margin-bottom: 6px;
-
   color: var(--text-secondary);
-
   font-size: 11px;
   font-weight: 750;
 }
@@ -1737,57 +1450,54 @@ img {
 
 /* =========================================================
    19. TABLES
-   ========================================================= */
+========================================================= */
 
+#content table,
 .content table {
   width: 100%;
-
   border-collapse: collapse;
-
   color: var(--text);
-
   font-size: 11px;
 }
 
+#content thead,
 .content thead {
   background: var(--surface-2);
 }
 
+#content th,
+#content td,
 .content th,
 .content td {
   padding: 14px 15px;
-
   border-bottom: 1px solid var(--border);
-
   text-align: left;
   vertical-align: middle;
 }
 
+#content th,
 .content th {
   color: var(--muted);
-
   font-size: 9px;
   font-weight: 900;
   letter-spacing: .8px;
   text-transform: uppercase;
 }
 
+#content td,
 .content td {
   color: var(--text-secondary);
 }
 
-.content tbody tr {
-  transition: background var(--transition);
-}
-
+#content tbody tr:hover,
 .content tbody tr:hover {
   background: var(--surface-2);
 }
 
 
 /* =========================================================
-   20. BADGES AND STATUS
-   ========================================================= */
+   20. BADGES
+========================================================= */
 
 .badge,
 .status-badge,
@@ -1795,16 +1505,11 @@ img {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   gap: 5px;
-
   padding: 5px 9px;
-
   border-radius: 999px;
-
   font-size: 9px;
   font-weight: 850;
-
   white-space: nowrap;
 }
 
@@ -1836,44 +1541,37 @@ img {
 
 /* =========================================================
    21. PROGRESS
-   ========================================================= */
+========================================================= */
 
 .progress,
 .progress-bar {
   width: 100%;
   height: 8px;
-
   overflow: hidden;
-
   border-radius: 999px;
-
   background: var(--surface-3);
 }
 
 .progress-fill {
   height: 100%;
-
   border-radius: inherit;
-
-  background: linear-gradient(
-    90deg,
-    #925CFF,
-    #398BFF
-  );
-
+  background: linear-gradient(90deg,#925CFF,#398BFF);
   transition: width .4s ease;
 }
 
 
 /* =========================================================
    22. LISTS
-   ========================================================= */
+========================================================= */
 
+#content ul,
+#content ol,
 .content ul,
 .content ol {
   padding-left: 20px;
 }
 
+#content li,
 .content li {
   margin-bottom: 7px;
   color: var(--text-secondary);
@@ -1882,17 +1580,14 @@ img {
 
 /* =========================================================
    23. NOTIFICATIONS
-   ========================================================= */
+========================================================= */
 
 .notification-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-
   padding: 15px;
-
   border-bottom: 1px solid var(--border);
-
   transition: background var(--transition);
 }
 
@@ -1904,47 +1599,37 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-
   flex-shrink: 0;
-
   width: 38px;
   height: 38px;
-
   border-radius: 12px;
-
   color: var(--primary);
   background: var(--primary-soft);
 }
 
 .notification-item strong {
   display: block;
-
   color: var(--text);
-
   font-size: 12px;
 }
 
 .notification-item p {
   margin: 4px 0;
-
   font-size: 11px;
 }
 
 
 /* =========================================================
    24. EMPTY STATES
-   ========================================================= */
+========================================================= */
 
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   min-height: 220px;
-
   padding: 30px;
-
   text-align: center;
 }
 
@@ -1952,45 +1637,36 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 58px;
   height: 58px;
-
   margin-bottom: 15px;
-
   border-radius: 18px;
-
   color: var(--primary);
   background: var(--primary-soft);
-
   font-size: 25px;
 }
 
 .empty-state h3 {
   margin: 0;
-
   font-size: 15px;
 }
 
 .empty-state p {
   max-width: 300px;
-
   margin: 7px 0 0;
-
   color: var(--muted);
-
   font-size: 11px;
 }
 
 
 /* =========================================================
    25. MODAL
-   ========================================================= */
+========================================================= */
 
+#modal,
 .modal {
   position: fixed;
   inset: 0;
-
   z-index: 1000;
 
   display: flex;
@@ -1998,13 +1674,13 @@ img {
   justify-content: center;
 
   padding: 20px;
-
   background: rgba(5,3,12,.72);
 
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
+#modal.hidden,
 .modal.hidden {
   display: none !important;
 }
@@ -2017,22 +1693,15 @@ img {
 .modal-box {
   position: relative;
   z-index: 1;
-
   width: 100%;
   max-width: 650px;
-
   max-height: calc(100vh - 40px);
-
   padding: 25px;
-
   overflow-y: auto;
-
   border: 1px solid var(--border);
   border-radius: 21px;
-
   color: var(--text);
   background: var(--surface);
-
   box-shadow: var(--shadow-lg);
 }
 
@@ -2041,13 +1710,11 @@ img {
   align-items: flex-start;
   justify-content: space-between;
   gap: 15px;
-
   margin-bottom: 20px;
 }
 
 .modal-eyebrow {
   color: var(--primary);
-
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 1.5px;
@@ -2055,9 +1722,7 @@ img {
 
 .modal-heading h2 {
   margin: 5px 0 0;
-
   color: var(--text);
-
   font-size: 20px;
 }
 
@@ -2065,18 +1730,13 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-
   flex-shrink: 0;
-
   width: 37px;
   height: 37px;
-
   border: 0;
   border-radius: 10px;
-
   color: var(--muted);
   background: var(--surface-3);
-
   font-size: 22px;
 }
 
@@ -2088,29 +1748,23 @@ img {
 
 /* =========================================================
    26. TOAST
-   ========================================================= */
+========================================================= */
 
+#toast,
 .toast {
   position: fixed;
-
   right: 23px;
   bottom: 23px;
-
   z-index: 2000;
 
   max-width: min(390px,calc(100vw - 35px));
-
   padding: 14px 18px;
-
   overflow-wrap: anywhere;
 
   border: 1px solid var(--border-strong);
   border-radius: 13px;
-
   color: var(--text);
-
   background: var(--surface-3);
-
   box-shadow: var(--shadow-lg);
 
   font-size: 12px;
@@ -2120,8 +1774,9 @@ img {
 
 /* =========================================================
    27. MOBILE NAVIGATION
-   ========================================================= */
+========================================================= */
 
+#mobileNav,
 .mobile-nav {
   display: none;
 }
@@ -2129,8 +1784,9 @@ img {
 
 /* =========================================================
    28. SIDEBAR OVERLAY
-   ========================================================= */
+========================================================= */
 
+#sidebarOverlay,
 .sidebar-overlay {
   display: none;
 }
@@ -2138,60 +1794,34 @@ img {
 
 /* =========================================================
    29. APP FOOTER
-   ========================================================= */
+========================================================= */
 
 .app-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-
   padding: 15px 30px;
-
   border-top: 1px solid var(--border);
-
   color: var(--muted);
-
   font-size: 9px;
 }
 
 
 /* =========================================================
-   30. GENERAL UTILITIES
-   ========================================================= */
+   30. UTILITIES
+========================================================= */
 
-.text-primary {
-  color: var(--primary) !important;
-}
+.text-primary { color: var(--primary) !important; }
+.text-muted { color: var(--muted) !important; }
+.text-success { color: var(--success) !important; }
+.text-danger { color: var(--danger) !important; }
+.text-warning { color: var(--warning) !important; }
 
-.text-muted {
-  color: var(--muted) !important;
-}
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
 
-.text-success {
-  color: var(--success) !important;
-}
-
-.text-danger {
-  color: var(--danger) !important;
-}
-
-.text-warning {
-  color: var(--warning) !important;
-}
-
-.text-center {
-  text-align: center !important;
-}
-
-.text-right {
-  text-align: right !important;
-}
-
-.flex {
-  display: flex !important;
-}
-
+.flex { display: flex !important; }
 .flex-center {
   display: flex;
   align-items: center;
@@ -2204,66 +1834,33 @@ img {
   justify-content: space-between;
 }
 
-.flex-column {
-  display: flex;
-  flex-direction: column;
-}
+.flex-column { display: flex; flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
 
-.flex-wrap {
-  flex-wrap: wrap;
-}
+.gap-5 { gap: 5px; }
+.gap-10 { gap: 10px; }
+.gap-15 { gap: 15px; }
+.gap-20 { gap: 20px; }
 
-.gap-5 {
-  gap: 5px;
-}
+.mt-10 { margin-top: 10px; }
+.mt-20 { margin-top: 20px; }
+.mb-10 { margin-bottom: 10px; }
+.mb-20 { margin-bottom: 20px; }
 
-.gap-10 {
-  gap: 10px;
-}
-
-.gap-15 {
-  gap: 15px;
-}
-
-.gap-20 {
-  gap: 20px;
-}
-
-.mt-10 {
-  margin-top: 10px;
-}
-
-.mt-20 {
-  margin-top: 20px;
-}
-
-.mb-10 {
-  margin-bottom: 10px;
-}
-
-.mb-20 {
-  margin-bottom: 20px;
-}
-
-.w-full {
-  width: 100%;
-}
-
-.min-w-0 {
-  min-width: 0;
-}
+.w-full { width: 100%; }
+.min-w-0 { min-width: 0; }
 
 
 /* =========================================================
-   31. TABLET RESPONSIVE
-   ========================================================= */
+   31. TABLET
+========================================================= */
 
 @media (max-width: 1100px) {
-
   :root {
     --sidebar-width: 230px;
   }
 
+  #content,
   .content {
     padding: 24px;
   }
@@ -2282,16 +1879,15 @@ img {
   .topbar {
     padding-inline: 20px;
   }
-
 }
 
 
 /* =========================================================
    32. SMALL TABLET
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 900px) {
-
+  #authScreen,
   .auth-screen {
     padding: 20px;
   }
@@ -2300,10 +1896,7 @@ img {
     grid-template-columns: .9fr 1fr;
   }
 
-  .auth-promo {
-    padding: 30px;
-  }
-
+  .auth-promo,
   .auth-form-side {
     padding: 30px;
   }
@@ -2315,42 +1908,36 @@ img {
   .search-wrap {
     max-width: 350px;
   }
-
 }
 
 
 /* =========================================================
-   33. MOBILE RESPONSIVE
-   ========================================================= */
+   33. MOBILE
+========================================================= */
 
 @media (max-width: 700px) {
-
   body {
     min-width: 320px;
   }
 
   /* AUTH */
 
+  #authScreen,
   .auth-screen {
     align-items: flex-start;
-
     padding: 13px;
   }
 
   .auth-layout {
     display: block;
-
     max-width: 480px;
     min-height: auto;
-
     margin: auto;
-
     border-radius: 21px;
   }
 
   .auth-promo {
     min-height: auto;
-
     padding: 22px;
   }
 
@@ -2360,7 +1947,6 @@ img {
 
   .promo-main h1 {
     margin: 15px 0 10px;
-
     font-size: 32px;
     letter-spacing: -1.5px;
   }
@@ -2391,42 +1977,37 @@ img {
   }
 
 
-  /* APP SHELL */
+  /* APP */
 
+  #appShell,
   .app-shell {
     display: block;
   }
 
   .sidebar {
     width: min(285px,85vw);
-
     transform: translateX(-110%);
-
     box-shadow: var(--shadow-lg);
   }
 
+  #appShell.menu-open .sidebar,
   .app-shell.menu-open .sidebar {
     transform: translateX(0);
   }
 
+  #sidebarOverlay.active,
   .sidebar-overlay.active {
     position: fixed;
     inset: 0;
-
     z-index: 95;
-
     display: block;
-
     background: rgba(5,3,12,.5);
-
     backdrop-filter: blur(2px);
   }
 
   .main-area {
     width: 100%;
-
     margin-left: 0;
-
     padding-bottom: 75px;
   }
 
@@ -2435,9 +2016,7 @@ img {
 
   .topbar {
     min-height: 64px;
-
     gap: 9px;
-
     padding: 9px 12px;
   }
 
@@ -2459,9 +2038,7 @@ img {
 
   .search-wrap input {
     min-height: 39px;
-
     padding: 9px 10px 9px 34px;
-
     font-size: 10px;
   }
 
@@ -2481,9 +2058,7 @@ img {
   .topbar-actions .icon-btn {
     width: 35px;
     height: 35px;
-
     border-radius: 10px;
-
     font-size: 14px;
   }
 
@@ -2499,25 +2074,32 @@ img {
 
   /* CONTENT */
 
+  #content,
   .content {
     padding: 19px 13px 25px;
   }
 
+  #content h1,
   .content h1 {
     font-size: 24px;
   }
 
+  #content h2,
   .content h2 {
     font-size: 19px;
   }
 
+  #content .card,
+  #content .panel,
+  #content .stat-card,
+  #content .dashboard-card,
+  #content .widget,
   .content .card,
   .content .panel,
   .content .stat-card,
   .content .dashboard-card,
   .content .widget {
     padding: 15px;
-
     border-radius: 15px;
   }
 
@@ -2552,83 +2134,74 @@ img {
   .dashboard-header {
     align-items: flex-start;
     flex-direction: column;
-
     gap: 10px;
   }
 
 
   /* TABLES */
 
+  #content table,
   .content table {
     display: block;
-
     width: 100%;
     max-width: 100%;
-
     overflow-x: auto;
-
     white-space: nowrap;
   }
 
+  #content th,
+  #content td,
   .content th,
   .content td {
     padding: 11px 12px;
   }
 
 
-  /* MOBILE BOTTOM NAV */
+  /* BOTTOM NAV */
 
+  #mobileNav:not(:empty),
   .mobile-nav:not(:empty) {
     position: fixed;
     inset: auto 0 0;
-
     z-index: 90;
 
     display: flex;
     align-items: center;
     justify-content: space-around;
-
     gap: 3px;
 
     min-height: 64px;
-
-    padding:
-      6px
-      5px
-      calc(6px + env(safe-area-inset-bottom));
+    padding: 6px 5px calc(6px + env(safe-area-inset-bottom));
 
     border-top: 1px solid var(--border);
-
     background: var(--surface);
-
     box-shadow: 0 -7px 25px rgba(0,0,0,.08);
   }
 
+  #mobileNav a,
+  #mobileNav button,
+  #mobileNav [data-page],
   .mobile-nav a,
   .mobile-nav button,
   .mobile-nav [data-page] {
     display: flex;
     flex: 1;
-
     flex-direction: column;
     align-items: center;
     justify-content: center;
-
     min-width: 0;
     min-height: 43px;
-
     padding: 4px;
-
     border: 0;
     border-radius: 9px;
-
     color: var(--muted);
     background: transparent;
-
     font-size: 9px;
     text-align: center;
   }
 
+  #mobileNav .active,
+  #mobileNav [aria-current="page"],
   .mobile-nav .active,
   .mobile-nav [aria-current="page"] {
     color: var(--primary);
@@ -2638,23 +2211,22 @@ img {
 
   /* MODAL */
 
+  #modal,
   .modal {
     align-items: flex-end;
-
     padding: 9px;
   }
 
   .modal-box {
     max-height: 88vh;
-
     padding: 19px;
-
     border-radius: 19px;
   }
 
 
   /* TOAST */
 
+  #toast,
   .toast {
     right: 12px;
     bottom: 82px;
@@ -2666,21 +2238,17 @@ img {
   .app-footer {
     flex-direction: column;
     align-items: flex-start;
-
     gap: 4px;
-
     padding: 12px 15px;
   }
-
 }
 
 
 /* =========================================================
    34. SMALL MOBILE
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 380px) {
-
   .auth-promo {
     padding: 18px;
   }
@@ -2712,6 +2280,7 @@ img {
     height: 32px;
   }
 
+  #content,
   .content {
     padding-inline: 10px;
   }
@@ -2724,16 +2293,15 @@ img {
   .stat-card .stat-value {
     font-size: 21px;
   }
-
 }
 
 
 /* =========================================================
    35. LANDSCAPE MOBILE
-   ========================================================= */
+========================================================= */
 
 @media (max-height: 500px) and (max-width: 900px) {
-
+  #authScreen,
   .auth-screen {
     align-items: flex-start;
   }
@@ -2745,13 +2313,12 @@ img {
   .sidebar {
     overflow-y: auto;
   }
-
 }
 
 
 /* =========================================================
    36. ACCESSIBILITY
-   ========================================================= */
+========================================================= */
 
 button:focus-visible,
 a:focus-visible,
@@ -2763,22 +2330,18 @@ textarea:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
-
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
-
     transition-duration: .01ms !important;
   }
-
 }
 
 
 /* =========================================================
-   END OF SMART ACADEMY V8 DESIGN SYSTEM
+   END — SMART ACADEMY V9
    EONIX TECH STUDIO
-   ========================================================= */
+========================================================= */
