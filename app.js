@@ -3957,10 +3957,10 @@ async function startLiveClass(classId) {
     ----------------------------------------- */
 
     const token =
-      await getLiveKitToken(
-        roomName
-      );
-
+  await getLiveKitToken(
+    roomName,
+    liveId
+  );
 
     /* -----------------------------------------
        Create LiveKit room
